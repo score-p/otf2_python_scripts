@@ -31,23 +31,31 @@ class ClockConverter:
 
 class IoStat:
     def __init__(self):
-        self.nread = 0
-        self.nwrite = 0
+        self.read_count = 0
+        self.write_count = 0
+
+    def incReadCount(self) -> None:
+        self.read_count += 1
+
+    def incWriteCount(self) -> None:
+        self.write_count += 1
+
+    def __str__(self) -> str:
+        return "read_count: {}, write_count: {}".format(self.read_count, self.write_count)
 
 def is_posix(identification: str) -> bool:
     return identification == "POSIX" or identification == "ISOC"
 
 def print_tree(tree: IntervalTree) -> None:
     for i in sorted(tree):
-        print("{}:{}, {}, {}".format(i.begin, i.end, i.data.nread, i.data.nwrite))
+        print("{}:{} -> {}".format(i.begin, i.end, i.data))
+
+def get_interval(timestamp: int) -> Interval:
+    result = sorted(tree.search(timestamp, strict=True))
+    assert(len(result) == 1)
+    return result[0]
 
 file = "/home/cherold/scorep/tests/isoc/scorep-20171220_1411_54178004785460/traces.otf2"
-
-freq = 50000
-
-number_of_reads = 0
-number_of_writes = 0
-
 clock = None
 
 with otf2.reader.open(file) as trace:
@@ -58,12 +66,7 @@ with otf2.reader.open(file) as trace:
     for location, event in trace.events:
         if isinstance(event, IoOperationBegin) and is_posix(event.handle.io_paradigm.identification):
             if event.mode == otf2.enums.IoOperationMode.WRITE:
-                number_of_writes += 1
+                get_interval(event.time - clock.clock_properties.global_offset).data.incWriteCount()
             if event.mode == otf2.enums.IoOperationMode.READ:
-                number_of_reads += 1
-        event_time = event.time - clock.clock_properties.global_offset
-        print(event_time)
-        for i in tree.search(event_time, strict=True):
-            i.data.nread = number_of_reads
-            i.data.nwrite = number_of_writes
+                get_interval(event.time - clock.clock_properties.global_offset).data.incWriteCount()
     print_tree(tree)
