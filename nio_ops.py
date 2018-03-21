@@ -7,6 +7,8 @@ import math
 from intervaltree import Interval, IntervalTree
 from otf2.events import *
 
+PARADIGM_IDS = {"POSIX", "ISOC"}
+
 class ClockConverter:
     clock_properties = None
 
@@ -44,29 +46,37 @@ class IoStat:
         return "read_count: {}, write_count: {}".format(self.read_count, self.write_count)
 
 def is_posix(identification: str) -> bool:
-    return identification == "POSIX" or identification == "ISOC"
+    return identification in PARADIGM_IDS
 
 def print_tree(tree: IntervalTree) -> None:
     for i in sorted(tree):
         print("{}:{} -> {}".format(i.begin, i.end, i.data))
 
-def get_interval(timestamp: int) -> Interval:
+def get_interval(timestamp: int, tree: IntervalTree) -> Interval:
     result = sorted(tree.search(timestamp, strict=True))
     assert(len(result) == 1)
     return result[0]
 
-file = "/home/cherold/scorep/tests/isoc/scorep-20171220_1411_54178004785460/traces.otf2"
-clock = None
+def process_interval(trace: otf2.reader.Reader, step_count: int) -> tuple:
+    for loc_group in trace.definitions.location_groups:
+        if loc_group.location_group_type == otf2.enums.LocationGroupType.PROCESS:
+            yield (loc_group.name, IntervalTree(Interval(freq * i, (freq * i) + freq, IoStat()) for i in range(0, step_count)))
 
-with otf2.reader.open(file) as trace:
-    clock = ClockConverter(trace.definitions.clock_properties)
-    nsteps = 200
-    freq = int(clock.clock_properties.trace_length / nsteps)
-    tree = IntervalTree(Interval(freq * i, (freq * i) + freq, IoStat()) for i in range(0, nsteps))
-    for location, event in trace.events:
-        if isinstance(event, IoOperationBegin) and is_posix(event.handle.io_paradigm.identification):
-            if event.mode == otf2.enums.IoOperationMode.WRITE:
-                get_interval(event.time - clock.clock_properties.global_offset).data.incWriteCount()
-            if event.mode == otf2.enums.IoOperationMode.READ:
-                get_interval(event.time - clock.clock_properties.global_offset).data.incWriteCount()
-    print_tree(tree)
+if __name__ == '__main__':
+    file = "/home/cherold/scorep/tests/isoc/scorep-20171220_1411_54178004785460/traces.otf2"
+    with otf2.reader.open(file) as trace:
+        clock = ClockConverter(trace.definitions.clock_properties)
+        step_count = 200
+        freq = int(clock.clock_properties.trace_length / step_count)
+        io_stats = {proc: interval for (proc, interval) in process_interval(trace, step_count)}
+        for location, event in trace.events:
+            if isinstance(event, IoOperationBegin) and is_posix(event.handle.io_paradigm.identification):
+                if event.mode == otf2.enums.IoOperationMode.WRITE:
+                    tree = io_stats[location.group.name]
+                    get_interval(event.time - clock.clock_properties.global_offset, tree).data.incWriteCount()
+                if event.mode == otf2.enums.IoOperationMode.READ:
+                    tree = io_stats[location.group.name]
+                    get_interval(event.time - clock.clock_properties.global_offset, tree).data.incWriteCount()
+
+        for proc in io_stats:
+            print_tree(io_stats[proc])
