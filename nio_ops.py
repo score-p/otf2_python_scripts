@@ -1,35 +1,28 @@
-#!/usr/bin/env python3
-
 import sys
 import otf2
 import collections
 import math
+import argparse
 from intervaltree import Interval, IntervalTree
-from otf2.events import *
+from otf2.events import IoOperationBegin
 
 PARADIGM_IDS = {"POSIX", "ISOC"}
 
 class ClockConverter:
-    clock_properties = None
-
     def __init__(self, clock_properties: otf2.definitions.ClockProperties):
         self.clock_properties = clock_properties
-        print("{}".format(clock_properties))
         self.uninitialized_warning = "ClockConverter was not initialized, as a consequence time output values are measured in ticks."
 
     def to_usec(self, ticks: int) -> float:
-        # assert(ticks > self.clock_properties.global_offset)
-        if self.clock_properties is not None:
             return float(ticks / (self.clock_properties.timer_resolution / 1000000))
-        else:
-            return 0.0
 
     def to_sec(self, ticks: int) -> float:
-        # assert(ticks > self.clock_properties.global_offset)
-        if self.clock_properties is not None:
             return float(ticks / self.clock_properties.timer_resolution)
-        else:
-            return 0.0
+
+    def to_ticks(self, secs: float) -> int:
+        assert(secs <= self.to_sec(self.clock_properties.trace_length))
+        return secs * self.clock_properties.timer_resolution
+
 
 class IoStat:
     def __init__(self):
