@@ -4,3 +4,6 @@ dev.env
 .vscode/settings.json
 .vscode/.ropeproject/config.py
 .vscode/tasks.json
+venv/*
+*.egg-info
+__pycache__/*
