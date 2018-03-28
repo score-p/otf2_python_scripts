@@ -14,10 +14,10 @@ class ClockConverter:
         self.uninitialized_warning = "ClockConverter was not initialized, as a consequence time output values are measured in ticks."
 
     def to_usec(self, ticks: int) -> float:
-            return float(ticks / (self.clock_properties.timer_resolution / 1000000))
+        return float(ticks / (self.clock_properties.timer_resolution / 1000000))
 
     def to_sec(self, ticks: int) -> float:
-            return float(ticks / self.clock_properties.timer_resolution)
+        return float(ticks / self.clock_properties.timer_resolution)
 
     def to_ticks(self, secs: float) -> int:
         assert(secs <= self.to_sec(self.clock_properties.trace_length))
@@ -50,26 +50,41 @@ def get_interval(timestamp: int, tree: IntervalTree) -> Interval:
     assert(len(result) == 1)
     return result[0]
 
-def process_interval(trace: otf2.reader.Reader, step_count: int) -> tuple:
+def process_interval(trace: otf2.reader.Reader, clock: ClockConverter, length: int) -> tuple:
+    start = clock.clock_properties.global_offset
+    end = start + clock.clock_properties.trace_length
+    # TODO check computed range
     for loc_group in trace.definitions.location_groups:
         if loc_group.location_group_type == otf2.enums.LocationGroupType.PROCESS:
-            yield (loc_group.name, IntervalTree(Interval(freq * i, (freq * i) + freq, IoStat()) for i in range(0, step_count)))
+            yield (loc_group.name, IntervalTree(Interval(i, i + length, IoStat()) for i in range(start, end, length)))
 
-if __name__ == '__main__':
-    file = "/home/cherold/scorep/tests/isoc/scorep-20171220_1411_54178004785460/traces.otf2"
-    with otf2.reader.open(file) as trace:
+def io_operation_count() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("trace", help="Path to trace file i.e. trace.otf2", type=str)
+    parser.add_argument("--num_intervals", help="Number of intervals in which the trace will be cutted.", type=int, default=10)
+    parser.add_argument("--interval_length", help="Specifies the length of an interval in seconds(float).", type=float)
+    args = parser.parse_args()
+    step_count = args.num_intervals
+
+    with otf2.reader.open(args.trace) as trace:
         clock = ClockConverter(trace.definitions.clock_properties)
-        step_count = 200
-        freq = int(clock.clock_properties.trace_length / step_count)
-        io_stats = {proc: interval for (proc, interval) in process_interval(trace, step_count)}
+        if args.interval_length:
+            length = int(clock.to_ticks(args.interval_length))
+            step_count = int(clock.clock_properties.trace_length / length)
+        else:
+            length = int(clock.clock_properties.trace_length / step_count)
+
+        print("Create {} intervals of length {} secs".format(step_count, clock.to_sec(length)))
+        io_stats = {proc: interval for (proc, interval) in process_interval(trace, clock, length)}
+
         for location, event in trace.events:
             if isinstance(event, IoOperationBegin) and is_posix(event.handle.io_paradigm.identification):
                 if event.mode == otf2.enums.IoOperationMode.WRITE:
                     tree = io_stats[location.group.name]
-                    get_interval(event.time - clock.clock_properties.global_offset, tree).data.incWriteCount()
+                    get_interval(event.time, tree).data.incWriteCount()
                 if event.mode == otf2.enums.IoOperationMode.READ:
                     tree = io_stats[location.group.name]
-                    get_interval(event.time - clock.clock_properties.global_offset, tree).data.incWriteCount()
+                    get_interval(event.time, tree).data.incReadCount()
 
         for proc in io_stats:
             print_tree(io_stats[proc])
