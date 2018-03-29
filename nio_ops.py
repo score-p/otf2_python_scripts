@@ -1,7 +1,9 @@
 import sys
+import os.path
 import otf2
 import collections
 import math
+import json
 import argparse
 from intervaltree import Interval, IntervalTree
 from otf2.events import IoOperationBegin
@@ -50,21 +52,37 @@ def get_interval(timestamp: int, tree: IntervalTree) -> Interval:
     assert(len(result) == 1)
     return result[0]
 
-def process_interval(trace: otf2.reader.Reader, clock: ClockConverter, length: int) -> tuple:
+def generate_intervals(trace: otf2.reader.Reader, clock: ClockConverter, length: int) -> tuple:
     start = clock.clock_properties.global_offset
     end = start + clock.clock_properties.trace_length
-    # TODO check computed range
     for loc_group in trace.definitions.location_groups:
         if loc_group.location_group_type == otf2.enums.LocationGroupType.PROCESS:
             yield (loc_group.name, IntervalTree(Interval(i, i + length, IoStat()) for i in range(start, end, length)))
 
+def parse_proc_stats(io_stats: dict) -> dict:
+    for proc in io_stats:
+        proc_stats = {"read": [], "write" : []}
+        for interval in sorted(io_stats[proc]):
+            proc_stats["read"].append(interval.data.read_count)
+            proc_stats["write"].append(interval.data.write_count)
+        yield (proc, proc_stats)
+
+def store_stats(io_stats: dict, path: str) -> None:
+    out = {proc: stats for proc, stats in parse_proc_stats(io_stats)}
+    with open("{}/io_stats.json".format(path), 'w') as file:
+        json.dump(out, file)
+
 def io_operation_count() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("trace", help="Path to trace file i.e. trace.otf2", type=str)
+    parser.add_argument("output", help="Path to output directory", type=str)
     parser.add_argument("--num_intervals", help="Number of intervals in which the trace will be cutted.", type=int, default=10)
     parser.add_argument("--interval_length", help="Specifies the length of an interval in seconds(float).", type=float)
     args = parser.parse_args()
     step_count = args.num_intervals
+
+    if not os.path.exists(args.output):
+        sys.exit("Given path does not exist.")
 
     with otf2.reader.open(args.trace) as trace:
         clock = ClockConverter(trace.definitions.clock_properties)
@@ -74,8 +92,8 @@ def io_operation_count() -> None:
         else:
             length = int(clock.clock_properties.trace_length / step_count)
 
-        print("Create {} intervals of length {} secs".format(step_count, clock.to_sec(length)))
-        io_stats = {proc: interval for (proc, interval) in process_interval(trace, clock, length)}
+        print("Created {} intervals of length {} secs".format(step_count, clock.to_sec(length)))
+        io_stats = {proc: interval for (proc, interval) in generate_intervals(trace, clock, length)}
 
         for location, event in trace.events:
             if isinstance(event, IoOperationBegin) and is_posix(event.handle.io_paradigm.identification):
@@ -86,5 +104,4 @@ def io_operation_count() -> None:
                     tree = io_stats[location.group.name]
                     get_interval(event.time, tree).data.incReadCount()
 
-        for proc in io_stats:
-            print_tree(io_stats[proc])
+        store_stats(io_stats, args.output)
