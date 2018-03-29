@@ -11,6 +11,6 @@ setup(
     ],
     entry_points='''
         [console_scripts]
-        numIoOps=nio_ops:io_operation_count
+        otf2_iostat=nio_ops:io_operation_count
     ''',
 )
