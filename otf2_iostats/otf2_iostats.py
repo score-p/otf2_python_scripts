@@ -11,20 +11,18 @@ from otf2.events import IoOperationBegin
 
 PARADIGM_IDS = {"POSIX", "ISOC"}
 
-class ClockInfo:
+class ClockConverter:
     def __init__(self, clock_properties: otf2.definitions.ClockProperties):
-        self.clock_properties = clock_properties
-        self.uninitialized_warning = "ClockConverter was not initialized, as a consequence time output values are measured in ticks."
+        self.properties = clock_properties
 
     def to_usec(self, ticks: int) -> float:
-        return float(ticks / (self.clock_properties.timer_resolution / 1000000))
+        return float(ticks / (self.properties.timer_resolution / 1000000))
 
     def to_sec(self, ticks: int) -> float:
-        return float(ticks / self.clock_properties.timer_resolution)
+        return float(ticks / self.properties.timer_resolution)
 
     def to_ticks(self, secs: float) -> int:
-        assert(secs <= self.to_sec(self.clock_properties.trace_length))
-        return secs * self.clock_properties.timer_resolution
+        return secs * self.properties.timer_resolution
 
 class IoStat:
     def __init__(self):
@@ -52,9 +50,9 @@ def get_interval(timestamp: int, tree: IntervalTree) -> Interval:
     assert(len(result) == 1)
     return result[0]
 
-def generate_intervals(trace: otf2.reader.Reader, clock: ClockInfo, length: int) -> tuple:
-    start = clock.clock_properties.global_offset
-    end = start + clock.clock_properties.trace_length
+def generate_intervals(trace: otf2.reader.Reader, clock: ClockConverter, length: int) -> tuple:
+    start = clock.properties.global_offset
+    end = start + clock.properties.trace_length
     for loc_group in trace.definitions.location_groups:
         if loc_group.location_group_type == otf2.enums.LocationGroupType.PROCESS:
             yield (loc_group.name, IntervalTree(Interval(i, i + length, IoStat()) for i in range(start, end, length)))
@@ -74,12 +72,12 @@ def store_stats(io_stats: dict, path: str) -> None:
 
 def get_io_operation_count(trace_file: str, interval_length: float = None, step_count: int = None) -> dict:
     with otf2.reader.open(trace_file) as trace:
-        clock = ClockInfo(trace.definitions.clock_properties)
+        clock = ClockConverter(trace.definitions.clock_properties)
         if interval_length:
             length = int(clock.to_ticks(interval_length))
-            step_count = int(clock.clock_properties.trace_length / length)
+            step_count = int(clock.properties.trace_length / length)
         else:
-            length = int(clock.clock_properties.trace_length / step_count)
+            length = int(clock.properties.trace_length / step_count)
 
         print("Created {} intervals of length {} secs".format(step_count, clock.to_sec(length)))
         io_stats = {proc: interval for (proc, interval) in generate_intervals(trace, clock, length)}
