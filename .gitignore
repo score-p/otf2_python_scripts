@@ -1,10 +1,6 @@
 dev.env
-.vscode/.ropeproject/objectdb
-.vscode/launch.json
-.vscode/settings.json
-.vscode/.ropeproject/config.py
-.vscode/tasks.json
-venv/*
+.vscode
+venv
 *.egg-info
-__pycache__/*
+__pycache__
 *.json
