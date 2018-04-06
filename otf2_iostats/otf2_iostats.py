@@ -1,3 +1,4 @@
+#! /usr/bin/env python3
 import sys
 import os.path
 import otf2
@@ -10,7 +11,7 @@ from otf2.events import IoOperationBegin
 
 PARADIGM_IDS = {"POSIX", "ISOC"}
 
-class ClockConverter:
+class ClockInfo:
     def __init__(self, clock_properties: otf2.definitions.ClockProperties):
         self.clock_properties = clock_properties
         self.uninitialized_warning = "ClockConverter was not initialized, as a consequence time output values are measured in ticks."
@@ -24,7 +25,6 @@ class ClockConverter:
     def to_ticks(self, secs: float) -> int:
         assert(secs <= self.to_sec(self.clock_properties.trace_length))
         return secs * self.clock_properties.timer_resolution
-
 
 class IoStat:
     def __init__(self):
@@ -52,7 +52,7 @@ def get_interval(timestamp: int, tree: IntervalTree) -> Interval:
     assert(len(result) == 1)
     return result[0]
 
-def generate_intervals(trace: otf2.reader.Reader, clock: ClockConverter, length: int) -> tuple:
+def generate_intervals(trace: otf2.reader.Reader, clock: ClockInfo, length: int) -> tuple:
     start = clock.clock_properties.global_offset
     end = start + clock.clock_properties.trace_length
     for loc_group in trace.definitions.location_groups:
@@ -72,22 +72,11 @@ def store_stats(io_stats: dict, path: str) -> None:
     with open("{}/io_stats.json".format(path), 'w') as file:
         json.dump(out, file)
 
-def io_operation_count() -> None:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("trace", help="Path to trace file i.e. trace.otf2", type=str)
-    parser.add_argument("output", help="Path to output directory", type=str)
-    parser.add_argument("--num_intervals", help="Number of intervals in which the trace will be cutted.", type=int, default=10)
-    parser.add_argument("--interval_length", help="Specifies the length of an interval in seconds(float).", type=float)
-    args = parser.parse_args()
-    step_count = args.num_intervals
-
-    if not os.path.exists(args.output):
-        sys.exit("Given path does not exist.")
-
-    with otf2.reader.open(args.trace) as trace:
-        clock = ClockConverter(trace.definitions.clock_properties)
-        if args.interval_length:
-            length = int(clock.to_ticks(args.interval_length))
+def get_io_operation_count(trace_file: str, interval_length: float = None, step_count: int = None) -> dict:
+    with otf2.reader.open(trace_file) as trace:
+        clock = ClockInfo(trace.definitions.clock_properties)
+        if interval_length:
+            length = int(clock.to_ticks(interval_length))
             step_count = int(clock.clock_properties.trace_length / length)
         else:
             length = int(clock.clock_properties.trace_length / step_count)
@@ -104,4 +93,17 @@ def io_operation_count() -> None:
                     tree = io_stats[location.group.name]
                     get_interval(event.time, tree).data.incReadCount()
 
-        store_stats(io_stats, args.output)
+        return io_stats
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("trace", help="Path to trace file i.e. trace.otf2", type=str)
+    parser.add_argument("output", help="Path to output directory", type=str)
+    parser.add_argument("--num_intervals", help="Number of intervals in which the trace will be cutted.", type=int, default=10)
+    parser.add_argument("--interval_length", help="Specifies the length of an interval in seconds(float).", type=float)
+    args = parser.parse_args()
+
+    if not os.path.exists(args.output):
+        sys.exit("Given path does not exist.")
+    io_stats = get_io_operation_count(args.trace, args.interval_length, args.num_intervals)
+    store_stats(io_stats, args.output)
