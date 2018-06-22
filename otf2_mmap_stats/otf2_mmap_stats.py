@@ -22,6 +22,7 @@ class MappedSpace:
         self.Source = ""
         self.Address = -1
         self.Accesses = 0
+        self.Metric = None
 
     def __str__(self):
         return "[{}, {}] = Size: {}, Source {}, {}".format(self.Address,
@@ -47,7 +48,10 @@ class AccessStatistics:
         i = self.address_spaces[address]
         assert(len(i) < 2)
         if len(i) == 1:
-            i.pop().data.Accesses += 1
+            space = i.pop().data
+            space.Accesses += 1
+            return space
+        return None
 
     def __str__(self):
         out = ""
@@ -89,12 +93,20 @@ if __name__ == "__main__":
     args = parser.parse_args()
     access_stats = AccessStatistics()
 
-    with otf2.reader.open(args.trace) as trace:
-        scorep_space = init_scorep_space(trace)
-        access_stats.add_mapped_space(scorep_space)
-        for location, event in trace.events:
-            mapped_space = init_mmap_space(event.attributes)
-            access_stats.add_mapped_space(mapped_space)
-            if isinstance(event, Metric) and event.metric.member.name == MEMACCESS_COUNTER:
-                access_stats.add_access(int(event.value))
+    with otf2.reader.open(args.trace) as trace_reader:
+        with otf2.writer.open("rewrite", definitions=trace_reader.definitions) as trace_writer:
+            scorep_space = init_scorep_space(trace_reader)
+            access_stats.add_mapped_space(scorep_space)
+            for location, event in trace_reader.events:
+                event_writer = trace_writer.event_writer_from_location(location)
+                event_writer(event)
+                mapped_space = init_mmap_space(event.attributes)
+                if mapped_space:
+                    mapped_space.Metric = trace_writer.definitions.metric(mapped_space.Source, unit="Number of Accesses")
+                    event_writer.metric(event.time, mapped_space.Metric, 0)
+                    access_stats.add_mapped_space(mapped_space)
+                if isinstance(event, Metric) and event.metric.member.name == MEMACCESS_COUNTER:
+                    space = access_stats.add_access(int(event.value))
+                    if space:
+                        event_writer.metric(event.time, space.Metric, space.Accesses)
     print(access_stats)
