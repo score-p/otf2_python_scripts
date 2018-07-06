@@ -1,16 +1,11 @@
 #! /usr/bin/env python3
 import sys
 import os.path
-import otf2
-# TODO Really needed?
-import collections
 from collections import defaultdict
-import math
-import json
 import argparse
 from enum import Enum, auto
 from intervaltree import Interval, IntervalTree
-
+import otf2
 
 MMAP_SIZE_TAG = "mappedSize"
 MMAP_ADDRESS_TAG = "startAddress"
