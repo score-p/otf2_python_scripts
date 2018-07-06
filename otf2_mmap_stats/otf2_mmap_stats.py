@@ -27,8 +27,8 @@ class AddressSpace:
     def __str__(self):
         return "[{}, {}] = Size: {}, Source {}, {}".format(
             self.Address,
-                                                            self.Address + self.Size,
-                                                            self.Size,
+            self.Address + self.Size,
+            self.Size,
             self.Source)
 
 
@@ -64,7 +64,7 @@ class AccessMetric:
         self._count = 0
         self._event_writer = event_writer
         self._metric = trace_writer.definitions.metric("{}".format(name),
-                                                        unit="Number of Accesses")
+                                                       unit="Number of Accesses")
         self._event_writer.metric(timestamp, self._metric, 0)
 
     def inc(self, timestamp):
@@ -114,10 +114,10 @@ class MemoryMappedIo:
     def add_mapped_space(self, location, space, timestamp, trace):
         if space:
             self._address_spaces.addi(space.Address,
-                                     space.Address + space.Size,
-                                     AddressSpaceStatistic(space,
-                                                     trace,
-                                                     timestamp))
+                                      space.Address + space.Size,
+                                      AddressSpaceStatistic(space,
+                                                            trace,
+                                                            timestamp))
 
     def add_access(self, event, location):
         self._number_of_accesses += 1
