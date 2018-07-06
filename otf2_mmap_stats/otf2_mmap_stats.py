@@ -80,26 +80,30 @@ class AccessMetric:
         return "{} : {}".format(self._name, self._count)
 
 
-class SpaceStatistics:
+class AddressSpaceStatistic:
+    """
+    Provides access statistics for a address space.
+    """
 
     def __init__(self, space, trace, timestamp):
-        self.Space = space
-        self.LoadMetric = dict()
-        self.StoreMetric = dict()
+        self._space = space
+        self._load_metric = defaultdict(AccessMetric)
+        self._store_metric = defaultdict(AccessMetric)
         for loc in trace.definitions.locations:
             if loc.type == otf2.LocationType.CPU_THREAD:
                 event_writer = trace.event_writer_from_location(loc)
-                self.LoadMetric[loc] = MyMetric(trace, event_writer, "{}:Load".format(self.Space.Source), timestamp)
-                self.StoreMetric[loc] = MyMetric(trace, event_writer, "{}:Store".format(self.Space.Source), timestamp)
+                self._load_metric[loc] = AccessMetric(trace, event_writer, "{}:Load".format(self._space.Source), timestamp)
+                self._store_metric[loc] = AccessMetric(trace, event_writer, "{}:Store".format(self._space.Source), timestamp)
 
     def inc_metric(self, location, metric_name, timestamp):
         if AccessType.get_access_type(metric_name) == AccessType.LOAD:
-            self.LoadMetric[location].inc(timestamp)
+            self._load_metric[location].inc(timestamp)
         elif AccessType.get_access_type(metric_name) == AccessType.STORE:
-            self.StoreMetric[location].inc(timestamp)
+            self._store_metric[location].inc(timestamp)
 
     def __str__(self):
-        return "{} {} {}".format(self.Space, self.LoadMetric, self.StoreMetric)
+        return "{} {} {}".format(self._space, self._load_metric, self._store_metric)
+
 
 class MemoryMappedIoStats:
 
