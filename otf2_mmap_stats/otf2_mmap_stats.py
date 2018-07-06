@@ -105,24 +105,28 @@ class AddressSpaceStatistic:
         return "{} {} {}".format(self._space, self._load_metric, self._store_metric)
 
 
-class MemoryMappedIoStats:
+class MemoryMappedIo:
+    """
+    Holds statistics of all used address spaces.
+    It uses an IntervalTree where an Interval refers
+    to an instance of AddressSpaceStatistic.
+    """
 
     def __init__(self):
-        # Interval -> SpaceStatistics
-        self.address_spaces = IntervalTree()
-        self.number_of_accesses = 0
+        self._address_spaces = IntervalTree()
+        self._number_of_accesses = 0
 
     def add_mapped_space(self, location, space, timestamp, trace):
         if space:
-            self.address_spaces.addi(space.Address,
+            self._address_spaces.addi(space.Address,
                                      space.Address + space.Size,
-                                     SpaceStatistics(space,
+                                     AddressSpaceStatistic(space,
                                                      trace,
                                                      timestamp))
 
     def add_access(self, event, location):
-        self.number_of_accesses += 1
-        intervals = self.address_spaces[int(event.value)]
+        self._number_of_accesses += 1
+        intervals = self._address_spaces[int(event.value)]
         assert(len(intervals) < 2)
         if len(intervals) == 1:
             space_stats = intervals.pop().data
@@ -130,14 +134,15 @@ class MemoryMappedIoStats:
 
     def __str__(self):
         out = ""
-        for interval in self.address_spaces:
+        for interval in self._address_spaces:
             out += "{}\n\n".format(interval.data)
         return out
+
 
 # TODO Factory?
 def make_mmap_space(attributes):
     if attributes:
-        ms = MappedSpace()
+        ms = AddressSpace()
         for attribute in attributes:
             if attribute.name == MMAP_SIZE_TAG:
                 ms.Size = attributes[attribute]
@@ -148,8 +153,9 @@ def make_mmap_space(attributes):
         return ms if ms.Size != -1 and ms.Address != -1 else None
     return None
 
+
 def make_scorep_space(trace):
-    space = MappedSpace()
+    space = AddressSpace()
     if trace:
         for prop in trace.definitions.location_properties:
             if prop.name == SCOREP_MEMORY_ADDRESS:
@@ -160,6 +166,7 @@ def make_scorep_space(trace):
         return space if space.Address != -1 and space.Size != -1 else None
     return None
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("trace", help="Path to trace file i.e. trace.otf2", type=str)
@@ -167,7 +174,7 @@ if __name__ == "__main__":
 
     with otf2.reader.open(args.trace) as trace_reader:
         with otf2.writer.open("rewrite", definitions=trace_reader.definitions) as trace_writer:
-            mmio_stats = MemoryMappedIoStats()
+            mmio_stats = MemoryMappedIo()
             for location, event in trace_reader.events:
                 event_writer = trace_writer.event_writer_from_location(location)
                 event_writer(event)
