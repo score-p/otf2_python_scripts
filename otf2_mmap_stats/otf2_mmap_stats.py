@@ -55,22 +55,24 @@ class AccessType (Enum):
             return False
 
 
-class MyMetric:
-
+class AccessMetric:
+    """
+    Extends the OTF2 definitions.metric.
+    """
     def __init__(self, trace_writer, event_writer, name, timestamp):
-        self.Name = name
-        self.Count = 0
-        self.EventWriter = event_writer
-        self.Metric = trace_writer.definitions.metric( "{}".format(name),
+        self._name = name
+        self._count = 0
+        self._event_writer = event_writer
+        self._metric = trace_writer.definitions.metric("{}".format(name),
                                                         unit="Number of Accesses")
-        self.EventWriter.metric(timestamp, self.Metric, 0)
+        self._event_writer.metric(timestamp, self._metric, 0)
 
     def inc(self, timestamp):
-        self.Count += 1
-        self.EventWriter.metric(timestamp, self.Metric, self.Count)
+        self._count += 1
+        self._event_writer.metric(timestamp, self._metric, self._count)
 
     def __str__(self):
-        return "{} : {}".format(self.Name, self.Count)
+        return "{} : {}".format(self._name, self._count)
 
 
 class SpaceStatistics:
