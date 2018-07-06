@@ -10,8 +10,7 @@ import json
 import argparse
 from enum import Enum, auto
 from intervaltree import Interval, IntervalTree
-from otf2.events import *
-import otf2.definitions as otf2defs
+
 
 MMAP_SIZE_TAG = "mappedSize"
 MMAP_ADDRESS_TAG = "startAddress"
@@ -82,7 +81,7 @@ class SpaceStatistics:
         self.StoreMetric = dict()
         for loc in trace.definitions.locations:
             if loc.type == otf2.LocationType.CPU_THREAD:
-                event_writer = trace.event_writer_from_location(location)
+                event_writer = trace.event_writer_from_location(loc)
                 self.LoadMetric[loc] = MyMetric(trace, event_writer, "{}:Load".format(self.Space.Source), timestamp)
                 self.StoreMetric[loc] = MyMetric(trace, event_writer, "{}:Store".format(self.Space.Source), timestamp)
 
@@ -158,13 +157,11 @@ if __name__ == "__main__":
     with otf2.reader.open(args.trace) as trace_reader:
         with otf2.writer.open("rewrite", definitions=trace_reader.definitions) as trace_writer:
             mmio_stats = MemoryMappedIoStats()
-            # scorep_space = init_scorep_space(trace_reader)
-            # access_stats.add_mapped_space(scorep_space)
             for location, event in trace_reader.events:
                 event_writer = trace_writer.event_writer_from_location(location)
+                event_writer(event)
                 mapped_space = make_mmap_space(event.attributes)
                 if mapped_space:
                     mmio_stats.add_mapped_space(location, mapped_space, event.time, trace_writer)
                 if isinstance(event, otf2.events.Metric) and AccessType.contains(event.metric.member.name):
                     mmio_stats.add_access(event, location)
-                event_writer(event)
