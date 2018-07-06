@@ -31,34 +31,34 @@ class MappedSpace:
                                                             self.Size,
                                                             self.Source )
 
+
 class AccessType (Enum):
+    """
+    Enum class to distinguish between access types.
+    """
 
     LOAD = auto()
     STORE = auto()
+    INVALID = auto()
 
     @classmethod
-    def get_access_type(cls, str):
-        if str == "MemoryAccess:load":
+    def get_access_type(cls, type_name):
+        if type_name == "MemoryAccess:load":
             return cls.LOAD
-        elif str ==  "MemoryAccess:store":
+        elif type_name == "MemoryAccess:store":
             return cls.STORE
-        else:
-            exit("Invalid type given")
+        return cls.INVALID
 
     @classmethod
-    def contains(cls, str):
-        if str == "MemoryAccess:load":
-            return True
-        elif str ==  "MemoryAccess:store":
-            return True
-        else:
-            return False
+    def contains(cls, type_name):
+        return cls.get_access_type(type_name) != cls.INVALID
 
 
 class AccessMetric:
     """
     Extends the OTF2 definitions.metric.
     """
+
     def __init__(self, trace_writer, event_writer, name, timestamp):
         self._name = name
         self._count = 0
