@@ -18,7 +18,11 @@ MMAP_SOURCE_TAG = "mappedSource"
 SCOREP_MEMORY_ADDRESS = "scorep:memoryaddress:begin"
 SCOREP_MEMORY_SIZE = "scorep:memoryaddress:len"
 
-class MappedSpace:
+
+class AddressSpace:
+    """
+    Stores details of used address space.
+    """
 
     def __init__(self):
         self.Size = -1
@@ -26,10 +30,11 @@ class MappedSpace:
         self.Address = -1
 
     def __str__(self):
-        return "[{}, {}] = Size: {}, Source {}, {}".format( self.Address,
+        return "[{}, {}] = Size: {}, Source {}, {}".format(
+            self.Address,
                                                             self.Address + self.Size,
                                                             self.Size,
-                                                            self.Source )
+            self.Source)
 
 
 class AccessType (Enum):
