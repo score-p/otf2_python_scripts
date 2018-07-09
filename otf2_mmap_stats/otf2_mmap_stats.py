@@ -19,10 +19,34 @@ class AddressSpace:
     Stores details of used address space.
     """
 
-    def __init__(self):
+    def _init_by_attributes(self, attributes):
+        for attribute in attributes:
+            if attribute.name == MMAP_SIZE_TAG:
+                self.Size = attributes[attribute]
+            elif attribute.name == MMAP_ADDRESS_TAG:
+                self.Address = attributes[attribute]
+            elif attribute.name == MMAP_SOURCE_TAG:
+                self.Source = attributes[attribute]
+
+    def _init_by_properties(self, properties):
+        for prop in trace.definitions.location_properties:
+            if prop.name == SCOREP_MEMORY_ADDRESS:
+                self.Address = int(prop.value)
+            elif prop.name == SCOREP_MEMORY_SIZE:
+                self.Size = int(prop.value)
+        self.Source = "Score-P"
+
+    def __init__(self, attributes=None, properties=None):
         self.Size = -1
         self.Source = ""
         self.Address = -1
+        if attributes:
+            self._init_by_attributes(attributes)
+        elif properties:
+            self._init_by_properties(properties)
+
+    def initialized(self):
+        return self.Size != -1 and self.Address != -1
 
     def __str__(self):
         return "[{}, {}] = Size: {}, Source {}, {}".format(
@@ -134,34 +158,6 @@ class MemoryMappedIo:
         return out
 
 
-# TODO Factory?
-def make_mmap_space(attributes):
-    if attributes:
-        ms = AddressSpace()
-        for attribute in attributes:
-            if attribute.name == MMAP_SIZE_TAG:
-                ms.Size = attributes[attribute]
-            elif attribute.name == MMAP_ADDRESS_TAG:
-                ms.Address = attributes[attribute]
-            elif attribute.name == MMAP_SOURCE_TAG:
-                ms.Source = attributes[attribute]
-        return ms if ms.Size != -1 and ms.Address != -1 else None
-    return None
-
-
-def make_scorep_space(trace):
-    space = AddressSpace()
-    if trace:
-        for prop in trace.definitions.location_properties:
-            if prop.name == SCOREP_MEMORY_ADDRESS:
-                space.Address = int(prop.value)
-            elif prop.name == SCOREP_MEMORY_SIZE:
-                space.Size = int(prop.value)
-        space.Source = "Score-P"
-        return space if space.Address != -1 and space.Size != -1 else None
-    return None
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("trace", help="Path to trace file i.e. trace.otf2", type=str)
@@ -173,8 +169,8 @@ if __name__ == "__main__":
             for location, event in trace_reader.events:
                 event_writer = trace_writer.event_writer_from_location(location)
                 event_writer(event)
-                mapped_space = make_mmap_space(event.attributes)
-                if mapped_space:
+                mapped_space = AddressSpace(attributes=event.attributes)
+                if mapped_space.initialized():
                     mmio_stats.add_mapped_space(location, mapped_space, event.time, trace_writer)
                 if isinstance(event, otf2.events.Metric) and AccessType.contains(event.metric.member.name):
                     mmio_stats.add_access(event, location)
