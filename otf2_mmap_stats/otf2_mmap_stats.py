@@ -105,14 +105,17 @@ class AddressSpaceStatistic:
     """
 
     def __init__(self, space, trace, timestamp):
+        self._trace = trace
         self._space = space
         self._load_metric = defaultdict(AccessMetric)
         self._store_metric = defaultdict(AccessMetric)
+        self._access_metric = dict()
         for loc in trace.definitions.locations:
             if loc.type == otf2.LocationType.CPU_THREAD:
                 event_writer = trace.event_writer_from_location(loc)
                 self._load_metric[loc] = AccessMetric(trace, event_writer, "{}:Load".format(self._space.Source), timestamp)
                 self._store_metric[loc] = AccessMetric(trace, event_writer, "{}:Store".format(self._space.Source), timestamp)
+                self._access_metric[loc] = trace.definitions.metric("Accesses:{}".format(self._space.Source), unit="Address")
 
     def inc_metric(self, location, metric_name, timestamp):
         if AccessType.get_access_type(metric_name) == AccessType.LOAD:
@@ -120,11 +123,15 @@ class AddressSpaceStatistic:
         elif AccessType.get_access_type(metric_name) == AccessType.STORE:
             self._store_metric[location].inc(timestamp)
 
+    def record_access(self, location, address, timestamp):
+        event_writer = self._trace.event_writer_from_location(location)
+        event_writer.metric(timestamp, self._access_metric[location], address)
+
     def __str__(self):
         return "{} {} {}".format(self._space, self._load_metric, self._store_metric)
 
 
-class MemoryMappedIo:
+class MemoryMappedIoStats:
     """
     Holds statistics of all used address spaces.
     It uses an IntervalTree where an Interval refers
@@ -150,6 +157,8 @@ class MemoryMappedIo:
         if len(intervals) == 1:
             space_stats = intervals.pop().data
             space_stats.inc_metric(location, event.metric.member.name, event.time)
+            space_stats.record_access(location, int(event.value), event.time)
+
 
     def __str__(self):
         out = ""
