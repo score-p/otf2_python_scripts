@@ -4,3 +4,4 @@ venv
 *.egg-info
 __pycache__
 *.json
+otf2_mmap_stats/tests/test_trace_01/*
