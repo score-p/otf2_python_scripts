@@ -1,6 +1,3 @@
-- control with arguments the metric creation:
-    - Number of accesses
-    - Load/Store Access
 - Use standard attributes for libc - malloc and co.
 - Think about graphical representation
 - Argument for trace output

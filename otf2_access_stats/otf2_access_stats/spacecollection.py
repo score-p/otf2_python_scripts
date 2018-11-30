@@ -109,7 +109,7 @@ class AddressSpace:
 
 
     def __str__(self):
-        return "[{}, {}] = Size: {}, Source {}, {}".format(
+        return "[{}, {}] = Size: {}, Source {}".format(
             self.Address,
             self.Address + self.Size,
             self.Size,
