@@ -1,0 +1,140 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="static/styles/bootstrap.min.css">
+    <script src="static/jquery.min.js"></script>
+    <script src="static/bootstrap.min.js"></script>
+    <script src='static/Chart.js'></script>
+    <title>{{ index_name }}</title>
+</head>
+
+<body>
+    <div class="jumbotron text-center">
+        <h2>Memory Access Statistics</h2>
+    </div>
+
+    <div class="container-fluid bg-4 text-center">
+
+        <div class="row">
+
+            <div class="col-sm-6" style="height: 300px">
+                <h3>Space Utilization</h3>
+                <canvas id="space_chart"></canvas>
+            </div>
+        <div class="col-sm-6" style="height: 300px">
+                <h3>Kind of Accesses </h3>
+                <select id="space_selector">
+                {% for key in space_stats_dict.keys() %}
+                <option value="{{key}}">{{key}}</option>
+                {% endfor %}
+                </select>
+                <canvas id="access_types_chart"></canvas>
+        </div>
+            <script>
+                space_chart_ctx = document.getElementById("space_chart").getContext("2d");
+                space_data = {
+                        labels: [{% for item in space_stats_dict.keys() %}"{{item}}",{% endfor %}],
+                        datasets: [{
+                                        data: [{% for item in space_stats_dict.values() %} {{item}}, {% endfor %}],
+                                        backgroundColor: [
+                                        {% for key in space_stats_dict.keys() %} "{{ space_colors_dict[key] }}", {% endfor %}
+                                        ],
+                                }],
+                };
+
+                var space_stat = new Chart(space_chart_ctx, {
+                    type: 'doughnut',
+                    data: space_data,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                    },
+                });
+
+                selector = document.getElementById("space_selector");
+                selected_space = selector.options[selector.selectedIndex].value;
+
+                type_chart_ctx = document.getElementById("access_types_chart").getContext("2d");
+                access_type_data = {
+                    datasets: [{
+                        data: [20, 30],
+                        backgroundColor: ['#ff6384', '#36a2eb'],
+                    }],
+                    // These labels appear in the legend and in the tooltips when hovering different arcs
+                    labels: ['Store', 'Load']
+                };
+
+                var access_type_stat = new Chart(type_chart_ctx, {
+                    type: 'doughnut',
+                    data: access_type_data,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                    },
+                });
+            </script>
+        </div>
+    </div>
+    <br>
+    <br>
+    <div class="container-fluid bg-4 text-center">
+        <h3>Memory Allocations</h3>
+        <div class="row" style="height: 400px">
+            <canvas id="allocation_chart"></canvas>
+            <script>
+                alloc_ctx = document.getElementById("allocation_chart").getContext("2d");
+
+                var barData = {
+                    labels:[1,2,3,4,5,6,7,8],
+                    datasets: [
+                        {
+                            fillColor: "rgba(151,187,205,0.2)",
+                            strokeColor: "rgba(151,187,205,1)",
+                            pointColor: "rgba(151,187,205,1)",
+                            pointStrokeColor: "#fff",
+                            pointHighlightFill: "#fff",
+                            pointHighlightStroke: "rgba(151,187,205,1)",
+                            bezierCurve: false,
+                            data: [10, 9, 8, 7, 6, 4, 7, 8],
+                        }]
+                }
+                Chart.defaults.global.animationSteps = 50;
+                Chart.defaults.global.tooltipYPadding = 16;
+                Chart.defaults.global.tooltipCornerRadius = 0;
+                Chart.defaults.global.tooltipTitleFontStyle = "normal";
+                Chart.defaults.global.tooltipFillColor = "rgba(0,0,0,0.8)";
+                Chart.defaults.global.animationEasing = "easeOutBounce";
+                Chart.defaults.global.responsive = false;
+                Chart.defaults.global.scaleLineColor = "black";
+                Chart.defaults.global.scaleFontSize = 16;
+
+                steps = 10
+                max = 10
+                // draw bar chart
+                var LineChartDemo = new Chart(alloc_ctx,{
+                    type: 'line',
+                    data: barData,
+                    options: {
+                        scaleOverride: true,
+                        scaleSteps: steps,
+                        scaleStepWidth: Math.ceil(max / steps),
+                        scaleStartValue: 0,
+                        scaleShowVerticalLines: true,
+                        scaleShowGridLines: true,
+                        barShowStroke: true,
+                        scaleShowLabels: true,
+                        bezierCurve: false,
+                        responsive: true,
+                        maintainAspectRatio: false,
+                    }
+                });
+            </script>
+        </div>
+    </div>
+</body>
+
+</html>
