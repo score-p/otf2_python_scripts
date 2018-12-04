@@ -5,10 +5,15 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" type="image/png" href="static/img/favicon.png">
     <link rel="stylesheet" href="static/styles/bootstrap.min.css">
-    <script src="static/js/jquery.min.js"></script>
+    <script type=text/javascript src="{{url_for('static', filename='js/jquery.min.js') }}">
+    </script>
     <script src="static/js/bootstrap.min.js"></script>
     <script src='static/js/Chart.js'></script>
+    <script type=text/javascript>
+    $SCRIPT_ROOT = {{ request.script_root|tojson|safe }};
+    </script>
     <title>{{ index_name }}</title>
 </head>
 
@@ -35,47 +40,68 @@
                 <canvas id="access_types_chart"></canvas>
         </div>
             <script>
-                space_chart_ctx = document.getElementById("space_chart").getContext("2d");
-                space_data = {
-                        labels: [{% for item in space_stats_dict.keys() %}"{{item}}",{% endfor %}],
+
+                function update_access_type_chart(data) {
+                    chart_data = [data.nstores, data.nloads];
+                    window.access_type_chart.data.datasets[0].data = chart_data;
+                    window.access_type_chart.update();
+                }
+
+                function selector_changed(ev) {
+                    ev.preventDefault();
+                    selector = document.getElementById("space_selector");
+                    selected_space = selector.options[selector.selectedIndex].value;
+                    $.getJSON($SCRIPT_ROOT + '/_get_stats_per_space', {
+                        selected_space: selected_space,
+                    }, update_access_type_chart );
+                }
+
+                function init_charts() {
+                    space_chart_ctx = document.getElementById("space_chart").getContext("2d");
+                    space_data = {
+                            labels: [{% for item in space_stats_dict.keys() %}"{{item}}",{% endfor %}],
+                            datasets: [{
+                                            data: [{% for item in space_stats_dict.values() %} {{item}}, {% endfor %}],
+                                            backgroundColor: [
+                                            {% for key in space_stats_dict.keys() %} "{{ space_colors_dict[key] }}", {% endfor %}
+                                            ],
+                                    }],
+                    };
+                    window.space_stat_chart = new Chart(space_chart_ctx, {
+                        type: 'doughnut',
+                        data: space_data,
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                        },
+                    });
+
+                    access_type_data = {
                         datasets: [{
-                                        data: [{% for item in space_stats_dict.values() %} {{item}}, {% endfor %}],
-                                        backgroundColor: [
-                                        {% for key in space_stats_dict.keys() %} "{{ space_colors_dict[key] }}", {% endfor %}
-                                        ],
-                                }],
-                };
+                            data: [0, 0],
+                            backgroundColor: ['#ff6384', '#36a2eb'],
+                        }],
+                        labels: ['Store', 'Load']
+                    };
 
-                var space_stat = new Chart(space_chart_ctx, {
-                    type: 'doughnut',
-                    data: space_data,
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                    },
-                });
+                    type_chart_ctx = document.getElementById("access_types_chart").getContext("2d");
+                    window.access_type_chart = new Chart(type_chart_ctx, {
+                        type: 'doughnut',
+                        data: access_type_data,
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                        },
+                    });
+                }
 
-                selector = document.getElementById("space_selector");
-                selected_space = selector.options[selector.selectedIndex].value;
-
-                type_chart_ctx = document.getElementById("access_types_chart").getContext("2d");
-                access_type_data = {
-                    datasets: [{
-                        data: [20, 30],
-                        backgroundColor: ['#ff6384', '#36a2eb'],
-                    }],
-                    // These labels appear in the legend and in the tooltips when hovering different arcs
-                    labels: ['Store', 'Load']
-                };
-
-                var access_type_stat = new Chart(type_chart_ctx, {
-                    type: 'doughnut',
-                    data: access_type_data,
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                    },
-                });
+                function init_event_listener() {
+                    selector = document.getElementById("space_selector");
+                    selector.addEventListener("change", selector_changed);
+                    document.addEventListener("DOMContentLoaded", selector_changed);
+                }
+                init_charts();
+                init_event_listener();
             </script>
         </div>
     </div>

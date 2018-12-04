@@ -4,7 +4,7 @@ import sys
 import os.path
 from collections import defaultdict
 import argparse
-from flask import Flask, render_template
+from flask import Flask, jsonify, render_template, request
 import argparse
 import otf2
 
@@ -37,15 +37,33 @@ def process_trace(trace):
     return stats
 
 
+@app.route('/_get_stats_per_space')
+def get_stats_per_space():
+    selected_space = request.args.get('selected_space', 0, type=str)
+    nloads = 0
+    nstores = 0
+    for space in app.config['space_stats'][selected_space]:
+        (nl, ns) = space.count_access_types()
+        nloads += nl
+        nstores += ns
+    return jsonify(nloads=nloads,nstores=nstores)
+
+# @app.context_processor
+# def utility_processor():
+#     def count_access_types_for_space(space_dict):
+#         for space in space_dict:
+#             yield space.count_access_types()
+#     return dict(count_access_types_for_space=count_access_types_for_space)
+
 @app.route('/')
 def index():
     index_name = 'Access Statistics'
     chart_name = 'Accesses per space'
     stats = process_trace(app.config['trace'])
-    space_stats = stats.get_space_stats()
+    app.config['space_stats'] = stats.get_space_stats()
 
     space_utilization = defaultdict(int)
-    for key, space_list in space_stats.items():
+    for key, space_list in app.config['space_stats'].items():
         for space in space_list:
             space_utilization[key] = sum([len(access_seq) for _, access_seq in space.get_all_accesses()])
 
