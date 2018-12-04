@@ -48,30 +48,32 @@ def get_stats_per_space():
         nstores += ns
     return jsonify(nloads=nloads,nstores=nstores)
 
-# @app.context_processor
-# def utility_processor():
-#     def count_access_types_for_space(space_dict):
-#         for space in space_dict:
-#             yield space.count_access_types()
-#     return dict(count_access_types_for_space=count_access_types_for_space)
+
+@app.context_processor
+def utility_processor():
+
+    def get_space_utilization():
+        space_utilization = defaultdict(int)
+        for key, space_list in app.config['space_stats'].items():
+            for space in space_list:
+                space_utilization[key] = sum([len(access_seq) for _, access_seq in space.get_all_accesses()])
+        return space_utilization
+
+    def get_space_colors():
+        space_colors = {}
+        for i, space_name in enumerate(sorted(app.config['space_stats'].keys()), 0):
+            space_colors[space_name] = COLORS[i]
+        return space_colors
+
+    return dict(get_space_utilization=get_space_utilization,
+                get_space_colors=get_space_colors)
+
 
 @app.route('/')
 def index():
-    index_name = 'Access Statistics'
-    chart_name = 'Accesses per space'
-    stats = process_trace(app.config['trace'])
-    app.config['space_stats'] = stats.get_space_stats()
-
-    space_utilization = defaultdict(int)
-    for key, space_list in app.config['space_stats'].items():
-        for space in space_list:
-            space_utilization[key] = sum([len(access_seq) for _, access_seq in space.get_all_accesses()])
-
-    space_colors = {}
-    for i, space_name in enumerate(sorted(space_utilization.keys()), 0):
-        space_colors[space_name] = COLORS[i]
-
-    return render_template("index.html", space_stats_dict=space_utilization, space_colors_dict=space_colors)
+    app.config['memory_access_stats'] = process_trace(app.config['trace'])
+    app.config['space_stats'] = app.config['memory_access_stats'].get_space_stats()
+    return render_template("index.html")
 
 
 if __name__ == "__main__":

@@ -7,10 +7,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" type="image/png" href="static/img/favicon.png">
     <link rel="stylesheet" href="static/styles/bootstrap.min.css">
-    <script type=text/javascript src="{{url_for('static', filename='js/jquery.min.js') }}">
-    </script>
-    <script src="static/js/bootstrap.min.js"></script>
-    <script src='static/js/Chart.js'></script>
+    <script type=text/javascript src="{{url_for('static', filename='js/jquery.min.js') }}"></script>
+    <script src="{{url_for('static', filename='js/bootstrap.min.js') }}"></script>
+    <script src="{{url_for('static', filename='js/Chart.js') }}"></script>
     <script type=text/javascript>
     $SCRIPT_ROOT = {{ request.script_root|tojson|safe }};
     </script>
@@ -33,14 +32,13 @@
         <div class="col-sm-6" style="height: 300px">
                 <h3>Kind of Accesses </h3>
                 <select id="space_selector">
-                {% for key in space_stats_dict.keys() %}
+                {% for key in config['space_stats'].keys() %}
                 <option value="{{key}}">{{key}}</option>
                 {% endfor %}
                 </select>
                 <canvas id="access_types_chart"></canvas>
         </div>
             <script>
-
                 function update_access_type_chart(data) {
                     chart_data = [data.nstores, data.nloads];
                     window.access_type_chart.data.datasets[0].data = chart_data;
@@ -58,12 +56,14 @@
 
                 function init_charts() {
                     space_chart_ctx = document.getElementById("space_chart").getContext("2d");
+                    {% set space_util_dict = get_space_utilization() %}
+                    {% set space_colors_dict = get_space_colors() %}
                     space_data = {
-                            labels: [{% for item in space_stats_dict.keys() %}"{{item}}",{% endfor %}],
+                            labels: [{% for item in space_util_dict.keys() %}"{{item}}",{% endfor %}],
                             datasets: [{
-                                            data: [{% for item in space_stats_dict.values() %} {{item}}, {% endfor %}],
+                                            data: [{% for item in space_util_dict.values() %} {{item}}, {% endfor %}],
                                             backgroundColor: [
-                                            {% for key in space_stats_dict.keys() %} "{{ space_colors_dict[key] }}", {% endfor %}
+                                            {% for key in space_util_dict.keys() %} "{{ space_colors_dict[key] }}", {% endfor %}
                                             ],
                                     }],
                     };
@@ -83,7 +83,6 @@
                         }],
                         labels: ['Store', 'Load']
                     };
-
                     type_chart_ctx = document.getElementById("access_types_chart").getContext("2d");
                     window.access_type_chart = new Chart(type_chart_ctx, {
                         type: 'doughnut',
@@ -100,6 +99,7 @@
                     selector.addEventListener("change", selector_changed);
                     document.addEventListener("DOMContentLoaded", selector_changed);
                 }
+
                 init_charts();
                 init_event_listener();
             </script>
