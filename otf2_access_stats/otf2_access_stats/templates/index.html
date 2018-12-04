@@ -25,19 +25,36 @@
 
         <div class="row">
 
-            <div class="col-sm-6" style="height: 300px">
+            <div class="col-sm-4" style="height: 300px">
                 <h3>Space Utilization</h3>
                 <canvas id="space_chart"></canvas>
+                <hr/>
+                <select id="space_chart_selector">
+                <option value="All">All</option>
+                <option value="Thread-0">Thread-0</option>
+                <option value="Thread-1">Thread-1</option>
+                </select>
             </div>
-        <div class="col-sm-6" style="height: 300px">
+            <div class="col-sm-4" style="height: 300px">
                 <h3>Kind of Accesses </h3>
+                <canvas id="access_types_chart"></canvas>
+                <hr/>
                 <select id="space_selector">
                 {% for key in config['space_stats'].keys() %}
                 <option value="{{key}}">{{key}}</option>
                 {% endfor %}
                 </select>
-                <canvas id="access_types_chart"></canvas>
-        </div>
+            </div>
+            <div class="col-sm-4" style="height: 300px">
+                <h3>Distribution across PE's</h3>
+                <canvas id="dist_pes_chart"></canvas>
+                <hr/>
+                <select id="dist_chart_space_selector">
+                {% for key in config['space_stats'].keys() %}
+                <option value="{{key}}">{{key}}</option>
+                {% endfor %}
+                </select>
+            </div>
             <script>
                 function update_access_type_chart(data) {
                     chart_data = [data.nstores, data.nloads];
@@ -53,7 +70,50 @@
                         selected_space: selected_space,
                     }, update_access_type_chart );
                 }
+                function init_dist_pes_chart() {
+                    var barChartData = {
+                        labels: ['Thread0', 'Thread1', 'Thread2', 'Thread3'],
+                        datasets: [{
+                            label: 'Stores',
+                            backgroundColor: '#ff6384',
+                            data: [
+                                100,
+                                120,
+                                90,
+                                200,
+                            ]
+                        }, {
+                            label: 'Loads',
+                            backgroundColor: '#36a2eb',
+                            data: [
+                                50,
+                                70,
+                                300,
+                                10,
+                            ]
+                        }
+                        ]
+                    };
 
+                    ctx = document.getElementById("dist_pes_chart").getContext("2d");
+
+                    var stackedBar = new Chart(ctx, {
+                        type: 'horizontalBar',
+                        data: barChartData,
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                xAxes: [{
+                                    stacked: true
+                                }],
+                                yAxes: [{
+                                    stacked: true
+                                }]
+                            }
+                        }
+                    });
+                }
                 function init_charts() {
                     space_chart_ctx = document.getElementById("space_chart").getContext("2d");
                     {% set space_util_dict = get_space_utilization() %}
@@ -92,6 +152,8 @@
                             maintainAspectRatio: false,
                         },
                     });
+
+                    init_dist_pes_chart();
                 }
 
                 function init_event_listener() {
@@ -105,6 +167,11 @@
             </script>
         </div>
     </div>
+    <br>
+    <br>
+    <br>
+    <br>
+    <br>
     <br>
     <br>
     <div class="container-fluid bg-4 text-center">
