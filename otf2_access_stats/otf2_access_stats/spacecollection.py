@@ -60,6 +60,14 @@ class AccessSequence:
         return out + ")"
 
 
+def count_stores(access_seq):
+    return sum(1 for _, access in access_seq.get() if access.type == AccessType.STORE)
+
+
+def count_loads(access_seq):
+    return sum(1 for _, access in access_seq.get() if access.type == AccessType.LOAD)
+
+
 class AddressSpace:
     """
     Stores details of used address space.
@@ -102,6 +110,15 @@ class AddressSpace:
     def get_all_accesses(self):
         for location, access_seq in self.Accesses.items():
             yield location, access_seq
+
+
+    def count_access_types(self):
+        nloads = 0
+        n = 0
+        for location, access_seq in self.Accesses.items():
+            nloads += count_loads(access_seq)
+            n += len(access_seq)
+        return nloads, n - nloads
 
 
     def initialized(self):
