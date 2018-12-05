@@ -56,7 +56,7 @@
                 </select>
             </div>
             <script>
-                function update_access_type_chart(data) {
+                {# function update_access_type_chart(data) {
                     chart_data = [data.nstores, data.nloads];
                     window.access_type_chart.data.datasets[0].data = chart_data;
                     window.access_type_chart.update();
@@ -69,7 +69,25 @@
                     $.getJSON($SCRIPT_ROOT + '/_get_stats_per_space', {
                         selected_space: selected_space,
                     }, update_access_type_chart );
+                } #}
+
+                function update_dist_chart(data) {
+                    window.dist_chart.data.labels = data.labels;
+                    window.dist_chart.data.datasets[0].data = data.stores;
+                    window.dist_chart.data.datasets[1].data = data.loads;
+                    window.dist_chart.update();
                 }
+
+                function dist_chart_space_selector_changed(ev) {
+                    ev.preventDefault();
+                    selector = document.getElementById("dist_chart_space_selector");
+                    selected_space = selector.options[selector.selectedIndex].value;
+                    $.getJSON($SCRIPT_ROOT + '/_get_thread_stats_per_space', {
+                        selected_space: selected_space,
+                    }, update_dist_chart );
+                }
+
+
                 function init_dist_pes_chart() {
                     var barChartData = {
                         labels: ['Thread0', 'Thread1', 'Thread2', 'Thread3'],
@@ -97,7 +115,7 @@
 
                     ctx = document.getElementById("dist_pes_chart").getContext("2d");
 
-                    var stackedBar = new Chart(ctx, {
+                    window.dist_chart = new Chart(ctx, {
                         type: 'horizontalBar',
                         data: barChartData,
                         options: {
@@ -136,7 +154,7 @@
                         },
                     });
 
-                    access_type_data = {
+                    {# access_type_data = {
                         datasets: [{
                             data: [0, 0],
                             backgroundColor: ['#ff6384', '#36a2eb'],
@@ -151,15 +169,19 @@
                             responsive: true,
                             maintainAspectRatio: false,
                         },
-                    });
+                    }); #}
 
                     init_dist_pes_chart();
                 }
 
                 function init_event_listener() {
-                    selector = document.getElementById("space_selector");
+                    {# selector = document.getElementById("space_selector");
                     selector.addEventListener("change", selector_changed);
-                    document.addEventListener("DOMContentLoaded", selector_changed);
+                    document.addEventListener("DOMContentLoaded", selector_changed); #}
+
+                    dist_chart_space_selector = document.getElementById("dist_chart_space_selector");
+                    dist_chart_space_selector.addEventListener("change", dist_chart_space_selector_changed);
+                    document.addEventListener("DOMContentLoaded", dist_chart_space_selector_changed);
                 }
 
                 init_charts();
