@@ -85,8 +85,12 @@ def utility_processor():
             space_colors[space_name] = COLORS[i]
         return space_colors
 
+    def get_space_lengths():
+        return [sum([space.Size for space in spaces]) for spaces in app.config['space_stats'].values()]
+
     return dict(get_space_utilization=get_space_utilization,
-                get_space_colors=get_space_colors)
+                get_space_colors=get_space_colors,
+                get_space_lengths=get_space_lengths)
 
 
 @app.route('/')

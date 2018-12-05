@@ -18,15 +18,24 @@
 
 <body>
     <div class="jumbotron text-center">
-        <h2>Memory Access Statistics</h2>
+        <h2>Memory Statistics</h2>
     </div>
 
     <div class="container-fluid bg-4 text-center">
 
         <div class="row">
-
             <div class="col-sm-4" style="height: 300px">
-                <h3>Space Utilization</h3>
+                <h3>Address Space - Size</h3>
+                <canvas id="space_lenght_chart"></canvas>
+                <hr/>
+                {# <select id="space_selector">
+                {% for key in config['space_stats'].keys() %}
+                <option value="{{key}}">{{key}}</option>
+                {% endfor %}
+                </select> #}
+            </div>
+            <div class="col-sm-4" style="height: 300px">
+                <h3>Address Space - Accesses</h3>
                 <canvas id="space_chart"></canvas>
                 <hr/>
                 <select id="space_chart_selector">
@@ -36,17 +45,7 @@
                 </select>
             </div>
             <div class="col-sm-4" style="height: 300px">
-                <h3>Kind of Accesses </h3>
-                <canvas id="access_types_chart"></canvas>
-                <hr/>
-                <select id="space_selector">
-                {% for key in config['space_stats'].keys() %}
-                <option value="{{key}}">{{key}}</option>
-                {% endfor %}
-                </select>
-            </div>
-            <div class="col-sm-4" style="height: 300px">
-                <h3>Distribution across PE's</h3>
+                <h3>Access Distribution across Threads</h3>
                 <canvas id="dist_pes_chart"></canvas>
                 <hr/>
                 <select id="dist_chart_space_selector">
@@ -132,6 +131,7 @@
                         }
                     });
                 }
+
                 function init_charts() {
                     space_chart_ctx = document.getElementById("space_chart").getContext("2d");
                     {% set space_util_dict = get_space_utilization() %}
@@ -154,24 +154,34 @@
                         },
                     });
 
-                    {# access_type_data = {
+                    {% set lenghts = get_space_lengths() %}
+                    access_type_data = {
                         datasets: [{
-                            data: [0, 0],
-                            backgroundColor: ['#ff6384', '#36a2eb'],
+                            data: [{% for item in lenghts %} {{item}}, {% endfor %}],
+                            backgroundColor: [
+                                {% for key in config['space_stats'].keys() %} "{{ space_colors_dict[key] }}", {% endfor %}
+                                ],
                         }],
-                        labels: ['Store', 'Load']
+                        labels: [{% for key in config['space_stats'].keys() %} "{{key}}", {% endfor %}]
                     };
-                    type_chart_ctx = document.getElementById("access_types_chart").getContext("2d");
+
+                    type_chart_ctx = document.getElementById("space_lenght_chart").getContext("2d");
                     window.access_type_chart = new Chart(type_chart_ctx, {
                         type: 'doughnut',
                         data: access_type_data,
-                        options: {
+                        {# options: {
                             responsive: true,
                             maintainAspectRatio: false,
-                        },
-                    }); #}
+                              tooltips: {
+                                callbacks: {
+                                label: (item) => `${item.yLabel} Byte`,
+                                },
+                            },
+                        }, #}
+                    });
 
                     init_dist_pes_chart();
+
                 }
 
                 function init_event_listener() {
