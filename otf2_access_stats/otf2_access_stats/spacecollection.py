@@ -125,6 +125,10 @@ class AddressSpace:
         return self.Size != -1 and self.Address != -1
 
 
+    def __getitem__(self, location):
+        return self.Accesses[location]
+
+
     def __str__(self):
         return "[{}, {}] = Size: {}, Source {}".format(
             self.Address,

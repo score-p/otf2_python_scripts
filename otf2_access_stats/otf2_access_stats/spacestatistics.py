@@ -17,12 +17,14 @@ class MemoryAccessStatistics:
 
     def __init__(self):
         self._address_spaces = IntervalTree()
+        self._stats_per_source = defaultdict(list)
 
 
     def add_mapped_space(self, space):
         self._address_spaces.addi(space.Address,
                                   space.Address + space.Size,
                                   space)
+        self._stats_per_source[space.Source].append(space)
 
 
     def add_access(self, event, location):
@@ -83,6 +85,23 @@ class MemoryAccessStatistics:
         for space in self._address_spaces:
             stats[space.data.Source].append(space.data)
         return stats
+
+
+    def _all_resource_utilizations(self):
+        src_util = defaultdict(int)
+        for key, allocations in self._stats_per_source.items():
+            for space in allocations:
+                src_util[key] = sum([len(access_seq) for _, access_seq in space.get_all_accesses()])
+        return src_util
+
+
+    def resource_utilization(self, location=None):
+        if not location:
+            return self._all_resource_utilizations()
+        source_util = defaultdict(int)
+        for space_name, allocations in self._stats_per_source.items():
+            source_util[space_name] = sum([len(allocation[location]) for allocation in allocations])
+        return source_util
 
 
     def __str__(self):
