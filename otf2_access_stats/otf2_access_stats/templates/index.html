@@ -157,13 +157,12 @@
                 }
 
                 function init_charts() {
-                    {% set space_colors_dict = get_space_colors() %}
                     {% set lenghts = get_space_lengths() %}
                     access_type_data = {
                         datasets: [{
                             data: [{% for item in lenghts %} {{item}}, {% endfor %}],
                             backgroundColor: [
-                                {% for key in config['space_stats'].keys() %} "{{ space_colors_dict[key] }}", {% endfor %}
+                                {% for key in config['space_stats'].keys() %} "{{ config['src_colors'][key] }}", {% endfor %}
                                 ],
                         }],
                         labels: [{% for key in config['space_stats'].keys() %} "{{key}}", {% endfor %}]

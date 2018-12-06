@@ -52,15 +52,9 @@ def get_space_colors():
 @app.route('/_get_space_util_for_thread')
 def get_space_util_for_thread():
     selected_thread = request.args.get('selected_thread', 0, type=str)
-    print("Selected {}".format(selected_thread))
     location = app.config['location_mapping'][selected_thread]
-
     stats_per_source = app.config['memory_access_stats'].resource_utilization(location)
-    colors_dict = get_space_colors()
-    colors = [colors_dict[s] for s in stats_per_source]
-
-    print(stats_per_source)
-    print(colors)
+    colors = [app.config['src_colors'][s] for s in stats_per_source]
     return jsonify(labels=list(stats_per_source.keys()),
                     colors=colors,
                     data=list(stats_per_source.values()))
@@ -112,7 +106,6 @@ def utility_processor():
         return [sum([space.Size for space in spaces]) for spaces in app.config['space_stats'].values()]
 
     return dict(get_space_utilization=get_space_utilization,
-                get_space_colors=get_space_colors,
                 get_space_lengths=get_space_lengths)
 
 
@@ -120,6 +113,7 @@ def utility_processor():
 def index():
     app.config['memory_access_stats'] = process_trace(app.config['trace'])
     app.config['space_stats'] = app.config['memory_access_stats'].get_space_stats()
+    app.config['src_colors'] = get_space_colors()
     return render_template("index.html")
 
 
