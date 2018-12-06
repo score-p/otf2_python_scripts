@@ -39,7 +39,7 @@
                 <canvas id="space_chart"></canvas>
                 <hr/>
                 <label>Threads:
-                <select id="space_chart_selector">
+                <select id="resource_chart_select">
                 {% for key in config['location_mapping'].keys() %}
                 <option value="{{key}}">{{key}}</option>
                 {% endfor %}
@@ -48,10 +48,10 @@
             </div>
             <div class="col-sm-4" style="height: 300px">
                 <h3>Access Distribution across Threads</h3>
-                <canvas id="dist_pes_chart"></canvas>
+                <canvas id="thread_chart"></canvas>
                 <hr/>
                 <label>Resource:
-                <select id="dist_chart_space_selector">
+                <select id="thread_chart_select">
                 {% for key in config['space_stats'].keys() %}
                 <option value="{{key}}">{{key}}</option>
                 {% endfor %}
@@ -59,8 +59,8 @@
                 </label>
             </div>
             <script>
-                function init_space_util_chart(event) {
-                    selector = document.getElementById("space_chart_selector");
+                function init_resource_chart(event) {
+                    selector = document.getElementById("resource_chart_select");
                     selected_thread = selector.options[selector.selectedIndex].value;
                     $.getJSON($SCRIPT_ROOT + '/_get_space_util_for_thread', {
                         selected_thread: selected_thread,
@@ -83,7 +83,7 @@
                         });
                     });
                 }
-                function update_space_util_chart(data) {
+                function update_resource_chart(data) {
                     space_data = {
                                 labels: data.labels,
                                 datasets: [{
@@ -95,68 +95,75 @@
                     window.space_util_chart.update();
                 }
 
-                function space_chart_selector_changed(ev) {
+                function resource_chart_select_changed(ev) {
                     ev.preventDefault();
-                    selector = document.getElementById("space_chart_selector");
+                    selector = document.getElementById("resource_chart_select");
                     selected_thread = selector.options[selector.selectedIndex].value;
                     $.getJSON($SCRIPT_ROOT + '/_get_space_util_for_thread', {
                         selected_thread: selected_thread,
-                    }, update_space_util_chart );
+                    }, update_resource_chart );
                 }
 
-                function update_dist_chart(data) {
+                function update_thread_chart(data) {
                     window.dist_chart.data.labels = data.labels;
                     window.dist_chart.data.datasets[0].data = data.stores;
                     window.dist_chart.data.datasets[1].data = data.loads;
                     window.dist_chart.update();
                 }
 
-                function dist_chart_space_selector_changed(ev) {
+                function thread_chart_changed(ev) {
                     ev.preventDefault();
-                    selector = document.getElementById("dist_chart_space_selector");
+                    selector = document.getElementById("thread_chart_select");
                     selected_space = selector.options[selector.selectedIndex].value;
                     $.getJSON($SCRIPT_ROOT + '/_get_thread_stats_per_space', {
                         selected_space: selected_space,
-                    }, update_dist_chart );
+                    }, update_thread_chart );
                 }
 
 
-                function init_dist_pes_chart() {
-                    data = {
-                        labels: [],
-                        datasets: [{
-                            label: 'Stores',
-                            backgroundColor: '#ff6384',
-                            data: []
-                        }, {
-                            label: 'Loads',
-                            backgroundColor: '#36a2eb',
-                            data: []
-                        }
-                        ]
-                    };
+                function init_thread_chart(event) {
+                    selector = document.getElementById("thread_chart_select");
+                    selected_space = selector.options[selector.selectedIndex].value;
 
-                    ctx = document.getElementById("dist_pes_chart").getContext("2d");
-
-                    window.dist_chart = new Chart(ctx, {
-                        type: 'horizontalBar',
-                        data: data,
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            scales: {
-                                xAxes: [{
-                                    stacked: true
-                                }],
-                                yAxes: [{
-                                    stacked: true
-                                }]
+                    $.getJSON($SCRIPT_ROOT + '/_get_thread_stats_per_space', {
+                        selected_space: selected_space,
+                    }, function(data) {
+                        chart_data = {
+                            labels: data.labels,
+                            datasets: [{
+                                label: 'Stores',
+                                backgroundColor: '#ff6384',
+                                data: data.stores
+                            }, {
+                                label: 'Loads',
+                                backgroundColor: '#36a2eb',
+                                data: data.loads
                             }
-                        }
+                            ]
+                        };
+
+                        ctx = document.getElementById("thread_chart").getContext("2d");
+
+                        window.dist_chart = new Chart(ctx, {
+                            type: 'horizontalBar',
+                            data: chart_data,
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                scales: {
+                                    xAxes: [{
+                                        stacked: true
+                                    }],
+                                    yAxes: [{
+                                        stacked: true
+                                    }]
+                                }
+                            }
+                        });
                     });
                 }
 
-                function init_charts() {
+                function init_resource_size_chart(event) {
                     {% set lenghts = get_space_lengths() %}
                     access_type_data = {
                         datasets: [{
@@ -172,32 +179,25 @@
                     window.access_type_chart = new Chart(type_chart_ctx, {
                         type: 'doughnut',
                         data: access_type_data,
-                        {# options: {
+                        options: {
                             responsive: true,
                             maintainAspectRatio: false,
-                              tooltips: {
-                                callbacks: {
-                                label: (item) => `${item.yLabel} Byte`,
-                                },
-                            },
-                        }, #}
+                        },
                     });
-
-                    init_dist_pes_chart();
-
                 }
 
                 function init_event_listener() {
-                    selector = document.getElementById("space_chart_selector");
-                    selector.addEventListener("change", space_chart_selector_changed);
-                    document.addEventListener("DOMContentLoaded", init_space_util_chart);
+                    selector = document.getElementById("resource_chart_select");
+                    selector.addEventListener("change", resource_chart_select_changed);
 
-                    dist_chart_space_selector = document.getElementById("dist_chart_space_selector");
-                    dist_chart_space_selector.addEventListener("change", dist_chart_space_selector_changed);
-                    document.addEventListener("DOMContentLoaded", dist_chart_space_selector_changed);
+                    thread_chart_select = document.getElementById("thread_chart_select");
+                    thread_chart_select.addEventListener("change", thread_chart_changed);
+
+                    document.addEventListener("DOMContentLoaded", init_thread_chart);
+                    document.addEventListener("DOMContentLoaded", init_resource_size_chart);
+                    document.addEventListener("DOMContentLoaded", init_resource_chart);
                 }
 
-                init_charts();
                 init_event_listener();
             </script>
         </div>
