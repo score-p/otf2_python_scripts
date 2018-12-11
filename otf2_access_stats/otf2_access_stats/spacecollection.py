@@ -4,8 +4,80 @@ from intervaltree import Interval
 
 import config as conf
 
-
 Access = namedtuple('Access', ['address','type'])
+
+
+class TimeStamp:
+    def __init__(self, resolution, ticks):
+        self._ticks = ticks
+        self._resolution = resolution
+
+
+    def ticks(self):
+        return self._ticks
+
+
+    def usec(self):
+        return int(round(self._ticks / (self._resolution / 1000000), 0))
+
+
+    def sec(self):
+        return int(round(self._ticks / (self._resolution ), 0))
+
+
+    def __add__(self, other):
+        return TimeStamp(self._resolution, self._ticks + other.ticks())
+
+
+    def __sub__(self, other):
+        return TimeStamp(self._resolution, self._ticks - other.ticks())
+
+
+    def __lt__(self, other):
+        return self._ticks < other.ticks()
+
+
+class Flush:
+    def __init__(self, attributes, t_begin, t_end):
+        def find_attribute(name):
+            return next(attributes[k] for k in attributes if k.name == name)
+
+        assert(t_begin < t_end)
+        self._t_begin = t_begin
+        self._t_end = t_end
+
+        try:
+            addr_begin = int(find_attribute(conf.FLUSH_ADDRESS_ATTR))
+            addr_end = addr_begin + int(find_attribute(conf.FLUSH_LENGTH_ATTR))
+            self._interval = Interval(addr_begin, addr_end)
+        except StopIteration:
+            print("Could not find flush attributes on event")
+            raise ValueError
+
+
+    def Duration(self):
+        return self._t_end - self._t_begin
+
+
+    def Interval(self):
+        return self._interval
+
+
+def isFlush(func_name: str):
+    return func_name in conf.FLUSH_OPERATIONS
+
+
+def get_flush_range(f: Interval, address_space: Interval) -> int:
+    if 0 < f.distance_to(address_space) or f.distance_to(address_space) > 0:
+        raise ValueError
+    elif f.contains_interval(address_space):
+        return address_space
+    elif address_space.contains_interval(f):
+        return f
+    elif f < address_space:
+        return Interval(address_space.begin, f.end)
+    elif f > address_space:
+        return Interval(f.begin, address_space.end)
 
 
 class AccessType (Enum):
@@ -91,6 +163,7 @@ class AddressSpace:
 
 
     def __init__(self, attributes=None, properties=None):
+        self.FlushedData = 0
         self.Size = -1
         self.Source = ""
         self.Address = -1
@@ -99,6 +172,9 @@ class AddressSpace:
             self._init_by_attributes(attributes)
         elif properties:
             self._init_by_properties(properties)
+        self._interval = Interval(self.Address, self.Address + self.Size)
+        self._flushed_ranges = list()
+
 
 
     def add_access_on_location(self, timestamp, access, location):
@@ -117,6 +193,17 @@ class AddressSpace:
             nloads += count_loads(access_seq)
             n += len(access_seq)
         return nloads, n - nloads
+
+
+    def flush(self, f):
+        r = get_flush_range(f.Interval(), self._interval)
+        self.FlushedData += r.length()
+        self._flushed_ranges.append(r)
+
+
+    def flushs(self):
+        for interval in self._flushed_ranges:
+            yield interval
 
 
     def initialized(self):

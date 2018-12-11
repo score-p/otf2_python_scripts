@@ -1,10 +1,13 @@
 import sys
 from collections import defaultdict
 import argparse
+import operator
+from functools import reduce
 from intervaltree import Interval, IntervalTree
 
 import otf2
 from otf2.enums import Type
+import otf2.events
 
 from metricdict import MetricDict
 from spacecollection import AccessType, AccessSequence, AddressSpace, Access
@@ -15,9 +18,11 @@ class MemoryAccessStatistics:
     Stores access statistics of all utilized address spaces.
     """
 
-    def __init__(self):
+    def __init__(self, resolution):
         self._address_spaces = IntervalTree()
         self._stats_per_source = defaultdict(list)
+        self._clock_resolution = resolution
+        self._flushs_per_source = defaultdict(list)
 
 
     def add_mapped_space(self, space):
@@ -36,6 +41,15 @@ class MemoryAccessStatistics:
             intervals.pop().data.add_access_on_location(event.time,
                                                         Access(address, access_type),
                                                         location)
+
+
+    def add_flush(self, enter_event, leave_event):
+        t_begin = TimeStamp(self._clock_resolution, enter_event.time)
+        t_end = TimeStamp(self._clock_resolution, leave_event.time)
+        f = Flush(leave_event.attributes, t_begin, t_end)
+        for interval in self._address_spaces[f.Interval().begin:f.Interval().end]:
+            interval.data.flush(f)
+            self._flushs_per_source[interval.data.Source].append(f)
 
 
     def create_access_metrics(self, trace_writer):
@@ -102,6 +116,31 @@ class MemoryAccessStatistics:
         for space_name, allocations in self._stats_per_source.items():
             source_util[space_name] = sum([len(allocation[location]) for allocation in allocations])
         return source_util
+
+
+    def accumulated_flush_time(self, resource):
+        return reduce(operator.add, [flush.Duration() for flush in self._flushs_per_source[resource]])
+
+
+    def resource_summary(self, resource):
+        summary = defaultdict(int)
+        summary["Number of Allocations"] = len(self._stats_per_source[resource])
+        summary["Time spent in Flush"] = self.accumulated_flush_time(resource).usec()
+        flushed_range = 0
+        for allocation in self._stats_per_source[resource]:
+            summary["Flushed Data"] += allocation.FlushedData
+            summary["Allocated Memory"] += allocation.Size
+
+            flush_tree = IntervalTree()
+            for interval in allocation.flushs():
+                flush_tree.add(interval)
+            flush_tree.merge_overlaps()
+            flushed_range += sum([i.length() for i in flush_tree])
+
+        if flushed_range > 0:
+            summary["Flush Coverage"] = (flushed_range / summary["Allocated Memory"]) * 100
+
+        return summary
 
 
     def __str__(self):
