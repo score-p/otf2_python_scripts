@@ -1,11 +1,9 @@
 from collections import defaultdict, namedtuple, OrderedDict
 from enum import Enum, auto
+from intervaltree import Interval
 
-MMAP_SIZE_TAG = "mappedSize"
-MMAP_ADDRESS_TAG = "startAddress"
-MMAP_SOURCE_TAG = "mappedSource"
-SCOREP_MEMORY_ADDRESS = "scorep:memoryaddress:begin"
-SCOREP_MEMORY_SIZE = "scorep:memoryaddress:len"
+import config as conf
+
 
 Access = namedtuple('Access', ['address','type'])
 
@@ -75,19 +73,19 @@ class AddressSpace:
 
     def _init_by_attributes(self, attributes):
         for attribute in attributes:
-            if attribute.name == MMAP_SIZE_TAG:
+            if attribute.name == conf.MMAP_SIZE_TAG:
                 self.Size = attributes[attribute]
-            elif attribute.name == MMAP_ADDRESS_TAG:
+            elif attribute.name == conf.MMAP_ADDRESS_TAG:
                 self.Address = attributes[attribute]
-            elif attribute.name == MMAP_SOURCE_TAG:
+            elif attribute.name == conf.MMAP_SOURCE_TAG:
                 self.Source = attributes[attribute]
 
 
     def _init_by_properties(self, properties):
         for prop in trace.definitions.location_properties:
-            if prop.name == SCOREP_MEMORY_ADDRESS:
+            if prop.name == conf.SCOREP_MEMORY_ADDRESS:
                 self.Address = int(prop.value)
-            elif prop.name == SCOREP_MEMORY_SIZE:
+            elif prop.name == conf.SCOREP_MEMORY_SIZE:
                 self.Size = int(prop.value)
         self.Source = "Score-P"
 
