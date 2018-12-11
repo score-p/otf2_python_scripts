@@ -1,3 +1,20 @@
 - Use standard attributes for libc - malloc and co.
-- Think about graphical representation
+- Start and end timestamp for flush
+- Think about graphical representation:
+    - Resource utilization (variance)
+    - Summary table(per file):
+        - Time spent in flush
+        - Flushed data
+        - Flush coverage
+        - Allocated Memory
+        - Number of allocations
+        - *Time spent in transfers
+    - Allocation size chart: show different allocation size and how times they occured
+    - Visualize the portion that are flushed of a file
+    - Access pattern chart: visualize accesses dependent on the time(chrome tracing)
+    - Source code chart: assign the sampled accesses to loc
 - Argument for trace output
+- Are overlapped spaces possible?
+- AddressSpace -> Allocation
+- Introduce process parallelism
+- Put flask into electron
