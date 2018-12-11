@@ -7,3 +7,4 @@ __pycache__
 *.def
 *.evt
 *.otf2
+otf2_access_stats/otf2_access_stats/testing.py
