@@ -4,10 +4,12 @@ import sys
 import os.path
 from collections import defaultdict
 from flask import Flask, jsonify, render_template, request
+
 import otf2
 from otf2.enums import LocationType
+from otf2.events import Enter, Leave
 
-from .spacecollection import AddressSpace, AccessType, count_loads
+from .spacecollection import AddressSpace, AccessType, isFlush, count_loads
 from .spacestatistics import MemoryAccessStatistics
 
 COLORS = ["#0000FF",
@@ -25,9 +27,14 @@ def create_app(foo):
     app = Flask(__name__)
 
     def process_trace(trace, app):
+        func_stack = list()
         with otf2.reader.open(trace) as trace_reader:
             stats = MemoryAccessStatistics(trace_reader.timer_resolution)
             for location, event in trace_reader.events:
+                if isinstance(event, Enter) and isFlush(event.region.name):
+                    func_stack.append(event)
+                if isinstance(event, Leave) and isFlush(event.region.name):
+                    stats.add_flush(func_stack.pop(), event)
                 if location.type == LocationType.CPU_THREAD and not location.name in app.config['location_mapping']:
                     app.config['location_mapping'][location.name] = location
                 space = AddressSpace(attributes=event.attributes)
