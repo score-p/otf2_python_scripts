@@ -9,8 +9,8 @@ import otf2
 from otf2.enums import Type
 import otf2.events
 
-from metricdict import MetricDict
-from spacecollection import AccessType, AccessSequence, AddressSpace, Access
+from .metricdict import MetricDict
+from .spacecollection import AccessType, AccessSequence, AddressSpace, Access, Flush, TimeStamp, isFlush
 
 
 class MemoryAccessStatistics:

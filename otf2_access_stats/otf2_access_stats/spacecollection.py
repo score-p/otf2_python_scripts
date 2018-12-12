@@ -2,7 +2,7 @@ from collections import defaultdict, namedtuple, OrderedDict
 from enum import Enum, auto
 from intervaltree import Interval
 
-import config as conf
+from . import config as conf
 
 Access = namedtuple('Access', ['address','type'])
 
