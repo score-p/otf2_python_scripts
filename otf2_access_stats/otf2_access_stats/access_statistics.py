@@ -63,21 +63,10 @@ def create_app(foo):
     @app.route('/_get_thread_stats_per_space')
     def get_thread_stats_per_space():
         selected_space = request.args.get('selected_space', 0, type=str)
-        load_distribution = defaultdict(int)
-        store_distribution = defaultdict(int)
-        for space in app.config['space_stats'][selected_space]:
-            for loc, seq in space.get_all_accesses():
-                loads = count_loads(seq)
-                stores = len(seq) - loads
-                load_distribution["Sum"] += loads
-                store_distribution["Sum"] += stores
-                load_distribution[loc.name] += loads
-                store_distribution[loc.name] += stores
-
-
-        return jsonify(labels=list(load_distribution.keys()),
-                    loads=list(load_distribution.values()),
-                    stores=list(store_distribution.values()))
+        (stores, loads) = app.config['memory_access_stats'].thread_access_stats(selected_space)
+        return jsonify(labels=list(loads.keys()),
+                    loads=list(loads.values()),
+                    stores=list(stores.values()))
 
     @app.route('/_get_stats_per_space')
     def get_stats_per_space():

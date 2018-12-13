@@ -10,7 +10,7 @@ from otf2.enums import Type
 import otf2.events
 
 from .metricdict import MetricDict
-from .spacecollection import AccessType, AccessSequence, AddressSpace, Access, Flush, TimeStamp, isFlush
+from .spacecollection import AccessType, AccessSequence, AddressSpace, Access, Flush, TimeStamp, isFlush, count_loads
 
 
 def format_byte(num):
@@ -154,6 +154,20 @@ class MemoryAccessStatistics:
             summary["Flush Coverage"] = "{} %".format((flushed_range / alloc_data) * 100)
 
         return summary
+
+
+    def thread_access_stats(self, resource):
+        load_distribution = defaultdict(int)
+        store_distribution = defaultdict(int)
+        for space in self._stats_per_source[resource]:
+            for loc, seq in space.get_all_accesses():
+                loads = count_loads(seq)
+                stores = len(seq) - loads
+                load_distribution["Sum"] += loads
+                store_distribution["Sum"] += stores
+                load_distribution[loc.name] += loads
+                store_distribution[loc.name] += stores
+        return (store_distribution, load_distribution)
 
 
     def __str__(self):
