@@ -13,6 +13,14 @@ from .metricdict import MetricDict
 from .spacecollection import AccessType, AccessSequence, AddressSpace, Access, Flush, TimeStamp, isFlush
 
 
+def format_byte(num):
+    for unit in ['','K','M','G','T','P','E','Z']:
+        if abs(num) < 1024.0:
+            return "{} {}Byte".format(num, unit)
+        num /= 1024.0
+    return "{} YiByte".format(num)
+
+
 class MemoryAccessStatistics:
     """
     Stores access statistics of all utilized address spaces.
@@ -123,13 +131,15 @@ class MemoryAccessStatistics:
 
 
     def resource_summary(self, resource):
-        summary = defaultdict(int)
+        summary = dict()
         summary["Number of Allocations"] = len(self._stats_per_source[resource])
-        summary["Time spent in Flush"] = self.accumulated_flush_time(resource).usec()
+        summary["Time spent in Flush"] = str(self.accumulated_flush_time(resource))
         flushed_range = 0
+        alloc_data = 0
+        flush_data = 0
         for allocation in self._stats_per_source[resource]:
-            summary["Flushed Data"] += allocation.FlushedData
-            summary["Allocated Memory"] += allocation.Size
+            flush_data += allocation.FlushedData
+            alloc_data += allocation.Size
 
             flush_tree = IntervalTree()
             for interval in allocation.flushs():
@@ -137,8 +147,11 @@ class MemoryAccessStatistics:
             flush_tree.merge_overlaps()
             flushed_range += sum([i.length() for i in flush_tree])
 
+        summary["Flushed Data"] = format_byte(flush_data)
+        summary["Allocated Memory"] = format_byte(alloc_data)
+
         if flushed_range > 0:
-            summary["Flush Coverage"] = (flushed_range / summary["Allocated Memory"]) * 100
+            summary["Flush Coverage"] = "{} %".format((flushed_range / alloc_data) * 100)
 
         return summary
 

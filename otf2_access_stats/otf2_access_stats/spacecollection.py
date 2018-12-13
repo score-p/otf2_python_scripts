@@ -13,12 +13,25 @@ class TimeStamp:
         self._resolution = resolution
 
 
+    def __str__(self):
+        t = self.nsec()
+        for unit in ["ns", "us", "ms", "s"]:
+            if t < 1000:
+                return "{} {}".format(t, unit)
+            t /= 1000
+        return "{} {}".format(t, unit)
+
+
     def ticks(self):
         return self._ticks
 
 
+    def nsec(self):
+        return int(round(self._ticks / (self._resolution / 1e9), 0))
+
+
     def usec(self):
-        return int(round(self._ticks / (self._resolution / 1000000), 0))
+        return int(round(self._ticks / (self._resolution / 1e6), 0))
 
 
     def sec(self):
