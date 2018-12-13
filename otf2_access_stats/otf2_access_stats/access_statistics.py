@@ -90,6 +90,11 @@ def create_app(foo):
             nstores += ns
         return jsonify(nloads=nloads,nstores=nstores)
 
+    @app.route('/_get_resource_summary')
+    def get_resource_summary():
+        selected_src = request.args.get('selected_res', 0, type=str)
+        summary = app.config['memory_access_stats'].resource_summary(selected_src)
+        return jsonify(summary=summary)
 
     @app.context_processor
     def utility_processor():
@@ -105,7 +110,8 @@ def create_app(foo):
             return [sum([space.Size for space in spaces]) for spaces in app.config['space_stats'].values()]
 
         return dict(get_space_utilization=get_space_utilization,
-                    get_space_lengths=get_space_lengths)
+                    get_space_lengths=get_space_lengths,
+                    sorted=sorted)
 
     @app.route('/')
     def index():
@@ -117,5 +123,6 @@ def create_app(foo):
     app.config['memory_access_stats'] = process_trace(app.config['trace'], app)
     app.config['space_stats'] = app.config['memory_access_stats'].get_space_stats()
     app.config['src_colors'] = get_space_colors()
+    app.config['default_resource'] = list(app.config['space_stats'].keys())[0]
 
     return app

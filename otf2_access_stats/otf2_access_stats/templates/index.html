@@ -22,17 +22,61 @@
     </div>
 
     <div class="container-fluid bg-4 text-center">
+        <div class="row text-center border">
+            <h3>Allocation/Flush Summary</h3>
+            <table id="summary_table" class="table table-bordered" style="width: 500px" align="center">
+                {% set summary = config['memory_access_stats'].resource_summary(config['default_resource']) %}
+                {% for key in sorted(summary.keys())%}
+                <tr>
+                    <th>{{key}}</th><td>{{summary[key]}}</td>
+                </tr>
+                {% endfor %}
+            </table>
+            <label>Resource:
+                <select id="summary_selector">
+                {% for key in config['space_stats'].keys() %}
+                {% if key ==  config['default_resource'] %}
+                    <option value="{{key}}" selected="selected">{{key}}</option>
+                {% else %}
+                    <option value="{{key}}">{{key}}</option>
+                {% endif %}
+                {% endfor %}
+                </select>
+            </label>
+            <hr/>
+            <script>
+                function update_resource_summary(data) {
+                    table = document.getElementById("summary_table");
+                    keys = Object.keys(data.summary).sort();
+                    $('#summary_table tr').each(function(){
+                        key = keys.shift();
+                        $(this).find('th').each(function(i, c){
+                            c.textContent = key;
+                        });
+                        $(this).find('td').each(function(i, c){
+                            c.textContent = data.summary[key];
+                        });
+                    })
+                }
 
+                function resource_summary_select_changed(event) {
+                    event.preventDefault();
+                    selector = document.getElementById("summary_selector");
+                    selected_space = selector.options[selector.selectedIndex].value;
+                    $.getJSON($SCRIPT_ROOT + '/_get_resource_summary', {
+                        selected_res: selected_space,
+                    }, update_resource_summary );
+                }
+
+                selector = document.getElementById("summary_selector");
+                selector.addEventListener("change", resource_summary_select_changed);
+            </script>
+        </div>
         <div class="row">
             <div class="col-sm-4" style="height: 300px">
                 <h3>Resource Sizes (byte)</h3>
                 <canvas id="space_lenght_chart"></canvas>
                 <hr/>
-                {# <select id="space_selector">
-                {% for key in config['space_stats'].keys() %}
-                <option value="{{key}}">{{key}}</option>
-                {% endfor %}
-                </select> #}
             </div>
             <div class="col-sm-4" style="height: 300px">
                 <h3>Resource Utilizations</h3>
