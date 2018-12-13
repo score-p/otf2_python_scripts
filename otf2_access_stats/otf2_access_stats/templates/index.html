@@ -20,7 +20,6 @@
     <div class="jumbotron text-center">
         <h2>Memory Statistics</h2>
     </div>
-
     <div class="container-fluid bg-4 text-center">
         <div class="row text-center border">
             <h3>Allocation/Flush Summary</h3>
@@ -44,33 +43,6 @@
                 </select>
             </label>
             <hr/>
-            <script>
-                function update_resource_summary(data) {
-                    table = document.getElementById("summary_table");
-                    keys = Object.keys(data.summary).sort();
-                    $('#summary_table tr').each(function(){
-                        key = keys.shift();
-                        $(this).find('th').each(function(i, c){
-                            c.textContent = key;
-                        });
-                        $(this).find('td').each(function(i, c){
-                            c.textContent = data.summary[key];
-                        });
-                    })
-                }
-
-                function resource_summary_select_changed(event) {
-                    event.preventDefault();
-                    selector = document.getElementById("summary_selector");
-                    selected_space = selector.options[selector.selectedIndex].value;
-                    $.getJSON($SCRIPT_ROOT + '/_get_resource_summary', {
-                        selected_res: selected_space,
-                    }, update_resource_summary );
-                }
-
-                selector = document.getElementById("summary_selector");
-                selector.addEventListener("change", resource_summary_select_changed);
-            </script>
         </div>
         <div class="row">
             <div class="col-sm-4" style="height: 300px">
@@ -102,111 +74,8 @@
                 </select>
                 </label>
             </div>
+            <script src="{{url_for('static', filename='js/memory_statistics.js') }}"></script>
             <script>
-                function init_resource_chart(event) {
-                    selector = document.getElementById("resource_chart_select");
-                    selected_thread = selector.options[selector.selectedIndex].value;
-                    $.getJSON($SCRIPT_ROOT + '/_get_space_util_for_thread', {
-                        selected_thread: selected_thread,
-                    }, function(data) {
-                        space_chart_ctx = document.getElementById("space_chart").getContext("2d");
-                        space_data = {
-                                labels: data.labels,
-                                datasets: [{
-                                                data: data.data,
-                                                backgroundColor: data.colors,
-                                        }],
-                        };
-                        window.space_util_chart = new Chart(space_chart_ctx, {
-                            type: 'doughnut',
-                            data: space_data,
-                            options: {
-                                responsive: true,
-                                maintainAspectRatio: false,
-                            },
-                        });
-                    });
-                }
-                function update_resource_chart(data) {
-                    space_data = {
-                                labels: data.labels,
-                                datasets: [{
-                                                data: data.data,
-                                                backgroundColor: data.colors,
-                                        }],
-                    };
-                    window.space_util_chart.data = space_data;
-                    window.space_util_chart.update();
-                }
-
-                function resource_chart_select_changed(ev) {
-                    ev.preventDefault();
-                    selector = document.getElementById("resource_chart_select");
-                    selected_thread = selector.options[selector.selectedIndex].value;
-                    $.getJSON($SCRIPT_ROOT + '/_get_space_util_for_thread', {
-                        selected_thread: selected_thread,
-                    }, update_resource_chart );
-                }
-
-                function update_thread_chart(data) {
-                    window.dist_chart.data.labels = data.labels;
-                    window.dist_chart.data.datasets[0].data = data.stores;
-                    window.dist_chart.data.datasets[1].data = data.loads;
-                    window.dist_chart.update();
-                }
-
-                function thread_chart_changed(ev) {
-                    ev.preventDefault();
-                    selector = document.getElementById("thread_chart_select");
-                    selected_space = selector.options[selector.selectedIndex].value;
-                    $.getJSON($SCRIPT_ROOT + '/_get_thread_stats_per_space', {
-                        selected_space: selected_space,
-                    }, update_thread_chart );
-                }
-
-
-                function init_thread_chart(event) {
-                    selector = document.getElementById("thread_chart_select");
-                    selected_space = selector.options[selector.selectedIndex].value;
-
-                    $.getJSON($SCRIPT_ROOT + '/_get_thread_stats_per_space', {
-                        selected_space: selected_space,
-                    }, function(data) {
-                        chart_data = {
-                            labels: data.labels,
-                            datasets: [{
-                                label: 'Stores',
-                                backgroundColor: '#ff6384',
-                                data: data.stores
-                            }, {
-                                label: 'Loads',
-                                backgroundColor: '#36a2eb',
-                                data: data.loads
-                            }
-                            ]
-                        };
-
-                        ctx = document.getElementById("thread_chart").getContext("2d");
-
-                        window.dist_chart = new Chart(ctx, {
-                            type: 'horizontalBar',
-                            data: chart_data,
-                            options: {
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                scales: {
-                                    xAxes: [{
-                                        stacked: true
-                                    }],
-                                    yAxes: [{
-                                        stacked: true
-                                    }]
-                                }
-                            }
-                        });
-                    });
-                }
-
                 function init_resource_size_chart(event) {
                     {% set lenghts = get_space_lengths() %}
                     access_type_data = {
@@ -229,81 +98,8 @@
                         },
                     });
                 }
-
-                function init_event_listener() {
-                    selector = document.getElementById("resource_chart_select");
-                    selector.addEventListener("change", resource_chart_select_changed);
-
-                    thread_chart_select = document.getElementById("thread_chart_select");
-                    thread_chart_select.addEventListener("change", thread_chart_changed);
-
-                    document.addEventListener("DOMContentLoaded", init_thread_chart);
-                    document.addEventListener("DOMContentLoaded", init_resource_size_chart);
-                    document.addEventListener("DOMContentLoaded", init_resource_chart);
-                }
-
-                init_event_listener();
-            </script>
-        </div>
-    </div>
-    <br>
-    <br>
-    <br>
-    <br>
-    <br>
-    <br>
-    <br>
-    <div class="container-fluid bg-4 text-center">
-        <h3>Memory Allocations</h3>
-        <div class="row" style="height: 400px">
-            <canvas id="allocation_chart"></canvas>
-            <script>
-                alloc_ctx = document.getElementById("allocation_chart").getContext("2d");
-
-                var barData = {
-                    labels:[1,2,3,4,5,6,7,8],
-                    datasets: [
-                        {
-                            fillColor: "rgba(151,187,205,0.2)",
-                            strokeColor: "rgba(151,187,205,1)",
-                            pointColor: "rgba(151,187,205,1)",
-                            pointStrokeColor: "#fff",
-                            pointHighlightFill: "#fff",
-                            pointHighlightStroke: "rgba(151,187,205,1)",
-                            bezierCurve: false,
-                            data: [10, 9, 8, 7, 6, 4, 7, 8],
-                        }]
-                }
-                Chart.defaults.global.animationSteps = 50;
-                Chart.defaults.global.tooltipYPadding = 16;
-                Chart.defaults.global.tooltipCornerRadius = 0;
-                Chart.defaults.global.tooltipTitleFontStyle = "normal";
-                Chart.defaults.global.tooltipFillColor = "rgba(0,0,0,0.8)";
-                Chart.defaults.global.animationEasing = "easeOutBounce";
-                Chart.defaults.global.responsive = false;
-                Chart.defaults.global.scaleLineColor = "black";
-                Chart.defaults.global.scaleFontSize = 16;
-
-                steps = 10
-                max = 10
-                // draw bar chart
-                var LineChartDemo = new Chart(alloc_ctx,{
-                    type: 'line',
-                    data: barData,
-                    options: {
-                        scaleOverride: true,
-                        scaleSteps: steps,
-                        scaleStepWidth: Math.ceil(max / steps),
-                        scaleStartValue: 0,
-                        scaleShowVerticalLines: true,
-                        scaleShowGridLines: true,
-                        barShowStroke: true,
-                        scaleShowLabels: true,
-                        bezierCurve: false,
-                        responsive: true,
-                        maintainAspectRatio: false,
-                    }
-                });
+                document.addEventListener("DOMContentLoaded", init_resource_size_chart);
+                init_chart_listener();
             </script>
         </div>
     </div>
