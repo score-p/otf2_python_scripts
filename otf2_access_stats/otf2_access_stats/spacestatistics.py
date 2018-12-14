@@ -1,20 +1,17 @@
 import sys
 from collections import defaultdict
-import argparse
 import operator
 from functools import reduce
-from intervaltree import Interval, IntervalTree
+from intervaltree import IntervalTree
 
-import otf2
 from otf2.enums import Type
-import otf2.events
 
 from .metricdict import MetricDict
-from .spacecollection import AccessType, AccessSequence, AddressSpace, Access, Flush, TimeStamp, isFlush, count_loads
+from .spacecollection import AccessType, Access, Flush, TimeStamp, count_loads
 
 
 def format_byte(num):
-    for unit in ['','K','M','G','T','P','E','Z']:
+    for unit in ['', 'K', 'M', 'G', 'T', 'P', 'E', 'Z']:
         if abs(num) < 1024.0:
             return "{} {}Byte".format(num, unit)
         num /= 1024.0
@@ -34,15 +31,15 @@ class MemoryAccessStatistics:
 
 
     def add_mapped_space(self, space):
-        self._address_spaces.addi(space.Address,
-                                  space.Address + space.Size,
+        self._address_spaces.addi(space.start_address,
+                                  space.start_address + space.size,
                                   space)
-        self._stats_per_source[space.Source].append(space)
+        self._stats_per_source[space.source].append(space)
 
 
     def add_access(self, event, location):
         intervals = self._address_spaces[int(event.value)]
-        assert(len(intervals) < 2)
+        assert len(intervals) < 2
         if len(intervals) == 1:
             address = int(event.value)
             access_type = AccessType.get_by_name(event.metric.member.name)
@@ -54,26 +51,27 @@ class MemoryAccessStatistics:
     def add_flush(self, enter_event, leave_event):
         t_begin = TimeStamp(self._clock_resolution, enter_event.time)
         t_end = TimeStamp(self._clock_resolution, leave_event.time)
-        f = Flush(leave_event.attributes, t_begin, t_end)
-        for interval in self._address_spaces[f.Interval().begin:f.Interval().end]:
-            interval.data.flush(f)
-            self._flushs_per_source[interval.data.Source].append(f)
+        flush = Flush(leave_event.attributes, t_begin, t_end)
+        for interval in self._address_spaces[flush.interval().begin:flush.interval().end]:
+            interval.data.flush(flush)
+            self._flushs_per_source[interval.data.source].append(flush)
 
 
     def create_access_metrics(self, trace_writer):
         async_metrics = MetricDict(trace_writer)
         for space in self._address_spaces:
             for location, access_seq in space.data.get_all_accesses():
-                metric_name = "Access:{}".format(space.data.Source)
+                metric_name = "Access:{}".format(space.data.source)
 
-                metric_key = "{}:{}".format(space.data.Source, str(location.name))
+                metric_key = "{}:{}".format(space.data.source, str(location.name))
 
-                metric = async_metrics.get(location, metric_name, metric_key, unit="address", value_type=Type.UINT64)
+                metric = async_metrics.get(location, metric_name, metric_key,
+                                           unit="address", value_type=Type.UINT64)
 
                 writer = trace_writer.event_writer_from_location(metric.location)
 
-                for t, a in access_seq.get():
-                    writer.metric(t, metric.instance, a.address)
+                for time, access in access_seq.get():
+                    writer.metric(time, metric.instance, access.address)
 
 
     def create_counter_metrics(self, trace_writer):
@@ -81,7 +79,8 @@ class MemoryAccessStatistics:
         def _get_counter(async_metrics, source, prefix, location, unit="#"):
             metric_name = "{}:{}".format(prefix, source)
             metric_key = "{}:{}".format(metric_name, str(location.name))
-            metric = async_metrics.get(location, metric_name, metric_key, unit=unit, value_type=Type.UINT64)
+            metric = async_metrics.get(location, metric_name, metric_key,
+                                       unit=unit, value_type=Type.UINT64)
             writer = trace_writer.event_writer_from_location(metric.location)
             return metric, writer, metric_key
 
@@ -89,15 +88,21 @@ class MemoryAccessStatistics:
         counters = defaultdict(int)
         for space in self._address_spaces:
             for location, access_seq in space.data.get_all_accesses():
-                (load_metric, load_writer, load_key) = _get_counter(async_metrics, space.data.Source, "LoadCounter", location)
-                (store_metric, store_writer, store_key) = _get_counter(async_metrics, space.data.Source, "StoreCounter", location)
-                for t, a in access_seq.get():
-                    if a.type == AccessType.LOAD:
+                (load_metric, load_writer, load_key) = _get_counter(async_metrics,
+                                                                    space.data.source,
+                                                                    "LoadCounter",
+                                                                    location)
+                (store_metric, store_writer, store_key) = _get_counter(async_metrics,
+                                                                       space.data.source,
+                                                                       "StoreCounter",
+                                                                       location)
+                for time, access in access_seq.get():
+                    if access.type == AccessType.LOAD:
                         counters[load_key] += 1
-                        load_writer.metric(t, load_metric.instance, counters[load_key])
-                    elif a.type == AccessType.STORE:
+                        load_writer.metric(time, load_metric.instance, counters[load_key])
+                    elif access.type == AccessType.STORE:
                         counters[store_key] += 1
-                        store_writer.metric(t, store_metric.instance, counters[store_key])
+                        store_writer.metric(time, store_metric.instance, counters[store_key])
                     else:
                         print("Found invalid access type.", file=sys.stderr)
 
@@ -105,7 +110,7 @@ class MemoryAccessStatistics:
     def get_space_stats(self):
         stats = defaultdict(list)
         for space in self._address_spaces:
-            stats[space.data.Source].append(space.data)
+            stats[space.data.source].append(space.data)
         return stats
 
 
@@ -127,7 +132,8 @@ class MemoryAccessStatistics:
 
 
     def accumulated_flush_time(self, resource):
-        return reduce(operator.add, [flush.Duration() for flush in self._flushs_per_source[resource]])
+        return reduce(operator.add, [flush.duration() for flush
+                                     in self._flushs_per_source[resource]])
 
 
     def resource_summary(self, resource):
@@ -138,8 +144,8 @@ class MemoryAccessStatistics:
         alloc_data = 0
         flush_data = 0
         for allocation in self._stats_per_source[resource]:
-            flush_data += allocation.FlushedData
-            alloc_data += allocation.Size
+            flush_data += allocation.flushed_data
+            alloc_data += allocation.size
 
             flush_tree = IntervalTree()
             for interval in allocation.flushs():
@@ -173,6 +179,6 @@ class MemoryAccessStatistics:
     def __str__(self):
         out = ""
         for space in self._address_spaces:
-            for loc, seq in space.data.get_all_accesses():
+            for _, seq in space.data.get_all_accesses():
                 out += "{}\n\n".format(seq)
         return out

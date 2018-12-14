@@ -8,3 +8,5 @@ __pycache__
 *.evt
 *.otf2
 otf2_access_stats/otf2_access_stats/testing.py
+otf2_access_stats/testing.py
+otf2_access_stats/testing#.py
