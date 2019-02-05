@@ -105,9 +105,9 @@ class AccessType(Enum):
 
     @classmethod
     def get_by_name(cls, type_name):
-        if type_name == "MemoryAccess:load":
+        if conf.LOAD_METRIC_LABEL in type_name:
             return cls.LOAD
-        elif type_name == "MemoryAccess:store":
+        elif conf.STORE_METRIC_LABEL in type_name:
             return cls.STORE
         return cls.INVALID
 
