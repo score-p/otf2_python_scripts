@@ -28,6 +28,7 @@ if __name__ == "__main__":
                 if space.initialized():
                     stats.add_mapped_space(space)
                 if isinstance(event, otf2.events.Metric) and AccessType.contains(event.metric.member.name):
+                    stats.add_access(event, event.metric.scope)
             if args.accesses:
                 stats.create_access_metrics(trace_writer)
             if args.counters:
