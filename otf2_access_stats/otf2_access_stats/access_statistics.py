@@ -48,7 +48,7 @@ def create_app():
                     stats.add_mapped_space(space)
                 if (isinstance(event, otf2.events.Metric) and
                         AccessType.contains(event.metric.member.name)):
-                    stats.add_access(event, location)
+                    stats.add_access(event, event.metric.scope)
         return stats
 
     def get_space_colors():
@@ -107,7 +107,7 @@ def create_app():
 
     app.config['location_mapping'] = dict()
     app.config['location_mapping']['ALL'] = None
-    app.config['trace'] = "tests/test_trace_01/traces.otf2"
+    app.config['trace'] = "/home/cherold/scorep/tests/pmem/libpmem/trace/traces.otf2"
     app.config['memory_access_stats'] = process_trace(app.config['trace'], app)
     app.config['space_stats'] = app.config['memory_access_stats'].get_space_stats()
     app.config['src_colors'] = get_space_colors()
