@@ -17,9 +17,9 @@ class TimeStamp:
         time = self.nsec()
         for unit in ["ns", "us", "ms", "s"]:
             if time < 1000:
-                return "{} {}".format(time, unit)
+                return "{} {}".format(round(time,2), unit)
             time /= 1000
-        return "{} {}".format(time, unit)
+        return "{} {}".format(round(time,2), unit)
 
 
     def ticks(self):

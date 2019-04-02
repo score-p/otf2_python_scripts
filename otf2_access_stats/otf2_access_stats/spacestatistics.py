@@ -13,9 +13,9 @@ from .spacecollection import AccessType, Access, Flush, TimeStamp, count_loads
 def format_byte(num):
     for unit in ['', 'K', 'M', 'G', 'T', 'P', 'E', 'Z']:
         if abs(num) < 1024.0:
-            return "{} {}Byte".format(num, unit)
+            return "{} {}Byte".format(round(num, 2), unit)
         num /= 1024.0
-    return "{} YiByte".format(num)
+    return "{} YiByte".format(round(num, 2))
 
 
 class MemoryAccessStatistics:
@@ -132,8 +132,9 @@ class MemoryAccessStatistics:
 
 
     def accumulated_flush_time(self, resource):
-        return reduce(operator.add, [flush.duration() for flush
-                                     in self._flushs_per_source[resource]])
+        if resource in self._flushs_per_source:
+            return reduce(operator.add, [flush.duration() for flush
+                                        in self._flushs_per_source[resource]])
 
 
     def resource_summary(self, resource):
