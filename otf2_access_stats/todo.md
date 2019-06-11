@@ -3,6 +3,7 @@
     - Resource utilization (variance)
     - Summary table(per file):
         - *Time spent in transfers
+        - Number of flush operation
     - Allocation size chart: show different allocation size and how times they occured
     - Visualize the portion that are flushed of a file
     - Access pattern chart: visualize accesses dependent on the time(chrome tracing)

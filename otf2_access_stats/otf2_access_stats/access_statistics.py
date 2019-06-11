@@ -24,7 +24,7 @@ COLORS = ["#0000FF",
           "#808080"]
 
 
-def create_app():
+def create_app(trace_file: str):
     """
     Creates flask application.
     """
@@ -107,7 +107,7 @@ def create_app():
 
     app.config['location_mapping'] = dict()
     app.config['location_mapping']['ALL'] = None
-    app.config['trace'] = "/home/cherold/scorep/tests/pmem/libpmem/trace/traces.otf2"
+    app.config['trace'] = trace_file
     app.config['memory_access_stats'] = process_trace(app.config['trace'], app)
     app.config['space_stats'] = app.config['memory_access_stats'].get_space_stats()
     app.config['src_colors'] = get_space_colors()
