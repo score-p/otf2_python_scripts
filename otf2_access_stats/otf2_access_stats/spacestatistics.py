@@ -7,7 +7,7 @@ from intervaltree import IntervalTree
 from otf2.enums import Type
 
 from .metricdict import MetricDict
-from .spacecollection import AccessType, Access, Flush, TimeStamp, count_loads
+from .spacecollection import AccessType, AccessAdapter, Access, Flush, TimeStamp, count_loads
 
 
 def format_byte(num):
@@ -46,6 +46,16 @@ class MemoryAccessStatistics:
             intervals.pop().data.add_access_on_location(event.time,
                                                         Access(address, access_type),
                                                         location)
+
+
+    def add_all_accesses(self, event_buffer, thread_id):
+        for event in event_buffer:
+            intervals = self._address_spaces[event.address]
+            assert len(intervals) < 2
+            if len(intervals) == 1:
+                intervals.pop().data.add_access_on_location(event.timestamp,
+                                                            AccessAdapter(event),
+                                                            thread_id)
 
 
     def add_flush(self, enter_event, leave_event):

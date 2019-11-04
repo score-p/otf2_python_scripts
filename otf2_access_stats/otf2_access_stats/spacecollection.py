@@ -2,9 +2,8 @@ from collections import defaultdict, namedtuple, OrderedDict
 from enum import Enum, auto
 from intervaltree import Interval
 
+import tracefile as tf
 from . import config as conf
-
-Access = namedtuple('Access', ['address', 'type'])
 
 
 class TimeStamp:
@@ -103,6 +102,7 @@ class AccessType(Enum):
     STORE = auto()
     INVALID = auto()
 
+    # TODO generic method is missing
     @classmethod
     def get_by_name(cls, type_name):
         if conf.LOAD_METRIC_LABEL in type_name:
@@ -111,9 +111,33 @@ class AccessType(Enum):
             return cls.STORE
         return cls.INVALID
 
+
+    @classmethod
+    def get(cls, access_event):
+        if access_event.type == tf.AccessType.LOAD:
+            return cls.LOAD
+        elif access_event.type == tf.AccessType.STORE:
+            return cls.STORE
+        else:
+            raise TypeError
+
+
     @classmethod
     def contains(cls, type_name):
         return cls.get_by_name(type_name) != cls.INVALID
+
+
+Access = namedtuple('Access', ['address', 'type'])
+
+
+class AccessAdapter(Access):
+    def __new__(cls, access_event):
+        a = access_event.address
+        t = AccessType.get(access_event)
+        self = super(AccessAdapter, cls).__new__(cls, a, t)
+        self._access_event = access_event
+        self.level = access_event.level
+        return self
 
 
 class AccessSequence:
