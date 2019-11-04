@@ -187,6 +187,29 @@ class MemoryAccessStatistics:
         return (store_distribution, load_distribution)
 
 
+    def memory_level_usage(self):
+
+        class AccessCounter:
+            def __init__(self):
+                self.load = 0
+                self.store = 0
+
+            def __str__(self):
+                return "Loads: {}, Stores: {}".format(self.load, self.store)
+
+
+        level_stat = defaultdict(lambda: defaultdict(AccessCounter))
+        for interval in self._address_spaces:
+            space = interval.data
+            for _, access_seq in space.get_all_accesses():
+                for _, access in access_seq.get():
+                    if access.type == AccessType.LOAD:
+                        level_stat[space.source][access.level].load += 1
+                    elif access.type == AccessType.STORE:
+                        level_stat[space.source][access.level].store += 1
+
+        return level_stat
+
     def __str__(self):
         out = ""
         for space in self._address_spaces:
