@@ -165,6 +165,12 @@ class AddressSpace:
                 self.start_address = attributes[attribute]
             elif attribute.name == conf.MMAP_SOURCE_TAG:
                 self.source = attributes[attribute]
+            elif attribute.name == conf.ALLOC_ADDRESS_TAG:
+                self.start_address = attributes[attribute]
+                self.source = "HEAP:" + str(conf.LABEL_COUNTER_START)
+                conf.LABEL_COUNTER_START += 1
+            elif attribute.name == conf.ALLOC_SIZE_TAG:
+                self.size = attributes[attribute]
 
 
     def _init_by_properties(self, properties):
